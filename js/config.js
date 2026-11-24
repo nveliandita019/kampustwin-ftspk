@@ -5,8 +5,19 @@
 
 import { projectedUnitsPerMeter } from './mercator.js';
 
-/** Base GeoServer. Ubah kalau tidak lewat proxy Live Server. */
-export const GEOSERVER = '/geoserver';
+/**
+ * Base GeoServer.
+ *
+ * Dipanggil langsung lintas origin (halaman di port 80, GeoServer di
+ * 8080), jadi CORS di GeoServer HARUS aktif. Caranya ada di
+ * geoserver/README.md -- dan perhatikan bahwa blok CORS bawaan di
+ * web.xml memakai kelas Tomcat yang tidak ada di GeoServer berbasis
+ * Jetty, jadi tidak bisa sekadar dilepas komentarnya.
+ *
+ * Kalau Anda memilih memakai proxy Apache (ProxyPass di httpd.conf,
+ * bukan di .htaccess), ganti nilai ini kembali jadi '/geoserver'.
+ */
+export const GEOSERVER = 'http://localhost:8080/geoserver';
 
 /** Workspace GeoServer. */
 export const WORKSPACE = 'ftspk';

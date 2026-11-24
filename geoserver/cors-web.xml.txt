@@ -1,0 +1,83 @@
+Potongan untuk mengaktifkan CORS di GeoServer berbasis Jetty.
+
+Tempel ke:
+  C:\Program Files\GeoServer\webapps\geoserver\WEB-INF\web.xml
+Butuh hak administrator. Backup dulu file aslinya.
+
+
+KENAPA TIDAK PAKAI BLOK BAWAAN
+------------------------------
+web.xml GeoServer sudah berisi blok CORS yang dikomentari, dengan
+keterangan "Uncomment following filter to enable CORS in Tomcat".
+Kelasnya org.apache.catalina.filters.CorsFilter, dan itu milik Tomcat.
+
+GeoServer standalone yang dipasang di sini berjalan di atas Jetty 12
+(terlihat dari header "Server: Jetty(12.1.14)"). Kelas Tomcat itu tidak
+ada di classpath-nya, jadi kalau blok bawaannya dilepas komentarnya
+begitu saja, GeoServer gagal start dengan ClassNotFoundException.
+
+Kelas yang benar untuk instalasi ini adalah
+org.eclipse.jetty.ee11.servlets.CrossOriginFilter, yang sudah tersedia
+di lib/jetty-ee11-servlets-12.1.14.jar. Nama parameternya juga berbeda
+dari versi Tomcat: allowedOrigins, bukan cors.allowed.origins.
+
+
+LANGKAH 1 -- tambahkan filter
+-----------------------------
+Letakkan tepat SEBELUM blok komentar CORS bawaan (sekitar baris 146).
+Biarkan blok bawaannya tetap terkomentari, jangan dihapus.
+
+    <filter>
+        <filter-name>cross-origin</filter-name>
+        <filter-class>org.eclipse.jetty.ee11.servlets.CrossOriginFilter</filter-class>
+        <init-param>
+            <param-name>allowedOrigins</param-name>
+            <param-value>http://localhost,http://127.0.0.1</param-value>
+        </init-param>
+        <init-param>
+            <param-name>allowedMethods</param-name>
+            <param-value>GET,POST,HEAD,OPTIONS</param-value>
+        </init-param>
+        <init-param>
+            <param-name>allowedHeaders</param-name>
+            <param-value>*</param-value>
+        </init-param>
+        <init-param>
+            <param-name>chainPreflight</param-name>
+            <param-value>false</param-value>
+        </init-param>
+    </filter>
+
+
+LANGKAH 2 -- petakan filternya
+------------------------------
+Letakkan tepat SETELAH filter-mapping "Remote IP Resolution"
+(sekitar baris 182), sebelum blok komentar filter-mapping CORS bawaan.
+
+    <filter-mapping>
+        <filter-name>cross-origin</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+
+LANGKAH 3 -- restart GeoServer
+------------------------------
+Lalu buktikan CORS-nya hidup:
+
+    curl -i -H "Origin: http://localhost" ^
+      "http://localhost:8080/geoserver/ows?service=WFS&version=1.0.0&request=GetCapabilities"
+
+Harus muncul baris:
+
+    Access-Control-Allow-Origin: http://localhost
+
+Kalau tidak muncul, filternya belum jalan. Periksa log GeoServer di
+C:\Program Files\GeoServer\logs\ untuk ClassNotFoundException.
+
+
+CATATAN KEAMANAN
+----------------
+allowedOrigins sengaja dibatasi ke localhost, tidak memakai "*".
+Dengan "*", situs mana pun yang dibuka di browser Anda bisa membaca
+seluruh isi GeoServer ini. Untuk pengembangan lokal itu berlebihan.
+Kalau nanti di-deploy, ganti dengan domain yang sebenarnya.
