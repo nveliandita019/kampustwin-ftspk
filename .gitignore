@@ -3,6 +3,22 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
-# data besar jangan di-commit, simpan di drive kelompok
+
+# Data besar jangan di-commit, simpan di drive kelompok.
 data/*.tif
 data/*.zip
+
+# File Gaussian splatting. splatftspk.sog saja 33 MB, dan hasil bake
+# di data/splat/ lebih besar lagi. Semuanya bisa dibuat ulang dari
+# data mentah, jadi bagikan lewat drive kelompok. Lihat tools/README.md.
+*.sog
+*.ply
+data/splat/
+
+# Knowledge graph graphify. Bisa dibuat ulang dengan /graphify, dan
+# .graphify_python berisi path absolut komputer masing-masing.
+graphify-out/
+
+# Artefak Python
+__pycache__/
+*.pyc

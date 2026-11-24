@@ -4,39 +4,196 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KampusTwin FTSPK</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <meta name="description" content="Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS.">
+
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- maplibre-gl-splat hanya terbit sebagai ESM, jadi dimuat lewat CDN.
+
+       Dua entri terakhir memperbaiki masalah "dua instance three.js":
+       bundel plugin mengimpor three@0.186.1, tetapi dua dependensinya
+       (@sparkjsdev/spark dan @dvt3d/maplibre-three-plugin) sama-sama
+       mengimpor three@0.178.0. Tanpa pengalihan ini halaman memuat dua
+       three sekaligus, dan objek dari yang satu tidak dikenali yang lain.
+       Semuanya disatukan ke 0.178.0, versi yang dipin dependensi terdalam.
+
+       Versi plugin dipin tepat di 0.2.9. Alasannya ada di js/mercator.js:
+       arti opsi `scale` bergantung pada sebuah bug di versi itu. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "maplibre-gl-splat": "https://cdn.jsdelivr.net/npm/maplibre-gl-splat@0.2.9/+esm",
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm": "https://cdn.jsdelivr.net/npm/three@0.178.0/+esm",
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/addons/loaders/GLTFLoader.js/+esm": "https://cdn.jsdelivr.net/npm/three@0.178.0/addons/loaders/GLTFLoader.js/+esm"
+    }
+  }
+  </script>
 </head>
 <body>
-  <nav class="navbar navbar-dark bg-dark px-3">
-    <span class="navbar-brand mb-0 h1">KampusTwin FTSPK</span>
-    <small class="text-light">Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS</small>
-  </nav>
 
-  <div id="panel" class="p-3">
-    <h6>Tingkat detail (LOD)</h6>
-    <div class="btn-group mb-3" role="group">
-      <button class="btn btn-sm btn-outline-primary active" data-lod="1">LOD 1</button>
-      <button class="btn btn-sm btn-outline-primary" data-lod="2">LOD 2</button>
-      <button class="btn btn-sm btn-outline-primary" data-lod="3">LOD 3</button>
+  <header class="app-header">
+    <div class="app-header__logos">
+      <img src="Perlogoan/logo-its-biru-transparan.png" alt="Logo ITS" width="30" height="30">
+      <img class="is-boxed" src="Perlogoan/logo-geomatika.jpg" alt="Logo Teknik Geomatika" width="28" height="28">
     </div>
-    <h6>Layer</h6>
-    <div class="form-check"><input class="form-check-input" type="checkbox" id="lyr-bangunan" checked><label class="form-check-label" for="lyr-bangunan">Gedung</label></div>
-    <p class="small text-muted mt-3 mb-0">Simulasi (kendaraan, banjir, cuaca) akan ditambahkan.</p>
-  </div>
+    <div class="app-header__divider"></div>
+    <div class="app-header__title">
+      <strong>KampusTwin FTSPK</strong>
+      <span>Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS</span>
+    </div>
+    <div class="app-header__spacer"></div>
+    <p class="status-dot" id="status" data-state="siap"><span>Siap</span></p>
+  </header>
 
   <div id="map"></div>
 
-  <div class="modal fade" id="modalGedung" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="mg-judul"></h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body" id="mg-isi"></div>
-    </div></div>
+  <div class="loading" id="loading" hidden>
+    <div class="loading__spin"></div>
+    <div>
+      <div id="loading-text">Memuat splat</div>
+      <div class="loading__detail" id="loading-detail"></div>
+    </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <aside class="panel" id="panel">
+    <div class="panel__head">
+      <h2>Kontrol</h2>
+      <button class="icon-btn panel__collapse" id="panel-collapse" type="button"
+              aria-expanded="true" aria-controls="panel-body" title="Lipat panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 6l-6 6 6 6"/><path d="M19 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="panel__body" id="panel-body">
+
+      <!-- 1. Tampilan 3D -->
+      <section class="sect" data-open="true">
+        <button class="sect__head" type="button">
+          <h3>Tampilan 3D</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="seg" id="seg-mode" role="group" aria-label="Mode tampilan">
+            <button type="button" data-mode="splat" aria-pressed="true">Splat 3D</button>
+            <button type="button" data-mode="blok" aria-pressed="false">Blok 3D</button>
+            <button type="button" data-mode="2d" aria-pressed="false">2D</button>
+          </div>
+          <p class="note" id="mode-note">Gaussian splatting hasil pemotretan drone FTSPK.</p>
+
+          <div class="field">
+            <div class="field__top">
+              <label>Kualitas splat</label>
+            </div>
+            <div class="seg" id="seg-kualitas" role="group" aria-label="Kualitas splat">
+              <button type="button" data-kualitas="ringan" aria-pressed="true">Ringan</button>
+              <button type="button" data-kualitas="penuh" aria-pressed="false">Penuh</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field__top">
+              <label for="splat-opacity">Opasitas splat</label>
+              <output id="splat-opacity-out">100%</output>
+            </div>
+            <input type="range" id="splat-opacity" min="20" max="100" step="5" value="100">
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Layer -->
+      <section class="sect" data-open="true">
+        <button class="sect__head" type="button">
+          <h3>Layer</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content" id="layer-list">
+          <!-- diisi oleh js/panel.js dari daftar di js/config.js -->
+        </div>
+      </section>
+
+      <!-- 3. Basemap -->
+      <section class="sect" data-open="false">
+        <button class="sect__head" type="button">
+          <h3>Basemap</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="seg" id="seg-basemap" role="group" aria-label="Basemap">
+            <button type="button" data-basemap="gelap" aria-pressed="true">Gelap</button>
+            <button type="button" data-basemap="satelit" aria-pressed="false">Satelit</button>
+            <button type="button" data-basemap="osm" aria-pressed="false">OSM</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Simulasi -->
+      <section class="sect" data-open="false">
+        <button class="sect__head" type="button">
+          <h3>Simulasi</h3>
+          <span class="badge">Segera</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="row">
+            <span class="swatch" style="background: var(--flood)"></span>
+            <span class="row__label"><span>Genangan banjir</span><small>butuh DEM DEMNAS</small></span>
+            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
+          </div>
+          <div class="row">
+            <span class="swatch" style="background: var(--fire)"></span>
+            <span class="row__label"><span>Zona kebakaran</span><small>butuh tabel skenario</small></span>
+            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
+          </div>
+          <div class="row">
+            <span class="swatch" style="background: var(--evac)"></span>
+            <span class="row__label"><span>Jalur evakuasi</span><small>butuh pgRouting</small></span>
+            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
+          </div>
+          <p class="note">Ketiga simulasi dirancang pada Tahap 3. Lihat <code>docs/</code>.</p>
+        </div>
+      </section>
+
+      <!-- 5. Info -->
+      <section class="sect" data-open="false">
+        <button class="sect__head" type="button">
+          <h3>Info</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="legend">
+            <div class="legend__item"><span class="swatch" style="background: var(--accent)"></span>Bounding box gedung</div>
+            <div class="legend__item"><span class="swatch" style="background: var(--flood)"></span>Sungai dan genangan</div>
+            <div class="legend__item"><span class="swatch" style="background: var(--evac)"></span>Jalur evakuasi</div>
+          </div>
+          <p class="note">
+            Data: GeoServer <code>ftspk</code> + PostGIS <code>ftspk_twin</code>.
+            Splat: <span id="info-splat">belum dimuat</span>.
+          </p>
+          <p class="note" id="info-georef">Georeferensi: belum dikalibrasi.</p>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- Panel kalibrasi, hanya tampil dengan ?dev=1 -->
+  <div class="dev" id="dev" hidden>
+    <h3>Kalibrasi splat</h3>
+    <div class="dev__grid">
+      <label>Rot X<input type="number" id="dev-rx" step="5" value="0"></label>
+      <label>Rot Y<input type="number" id="dev-ry" step="5" value="0"></label>
+      <label>Rot Z<input type="number" id="dev-rz" step="5" value="0"></label>
+      <label>Skala<input type="number" id="dev-scale" step="1" value="1"></label>
+      <label>Alt m<input type="number" id="dev-alt" step="1" value="0"></label>
+      <label>Lon<input type="number" id="dev-lon" step="0.0001"></label>
+      <label>Lat<input type="number" id="dev-lat" step="0.0001"></label>
+    </div>
+    <button class="btn" id="dev-apply" type="button">Terapkan</button>
+    <p class="dev__out" id="dev-out"></p>
+  </div>
+
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="js/app.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

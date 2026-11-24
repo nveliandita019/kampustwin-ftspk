@@ -1,0 +1,25 @@
+# Konfigurasi Apache (XAMPP) untuk KampusTwin FTSPK.
+
+# Apache tidak mengenal .sog dan akan menyajikannya sebagai text/plain,
+# yang membuat sebagian browser menolak atau merusak isinya.
+AddType application/octet-stream .sog
+AddType application/octet-stream .ply
+
+# File splat tidak pernah berubah isinya tanpa ganti nama, jadi aman
+# di-cache lama. Ini juga yang membuat ganti kualitas terasa instan
+# setelah pemuatan pertama.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  <FilesMatch "\.(sog|ply)$">
+    ExpiresDefault "access plus 1 year"
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# Proxy ke GeoServer, supaya front end bisa memanggil /geoserver tanpa
+# urusan CORS. Butuh mod_proxy dan mod_proxy_http diaktifkan di
+# httpd.conf. Kalau GeoServer tidak di port 8080, sesuaikan di sini.
+<IfModule mod_proxy.c>
+  ProxyPass        /geoserver http://localhost:8080/geoserver
+  ProxyPassReverse /geoserver http://localhost:8080/geoserver
+</IfModule>
