@@ -2,8 +2,10 @@
 
 # Apache tidak mengenal .sog dan akan menyajikannya sebagai text/plain,
 # yang membuat sebagian browser menolak atau merusak isinya.
-AddType application/octet-stream .sog
-AddType application/octet-stream .ply
+<IfModule mod_mime.c>
+  AddType application/octet-stream .sog
+  AddType application/octet-stream .ply
+</IfModule>
 
 # File splat tidak pernah berubah isinya tanpa ganti nama, jadi aman
 # di-cache lama. Ini juga yang membuat ganti kualitas terasa instan
@@ -12,14 +14,34 @@ AddType application/octet-stream .ply
   ExpiresActive On
   <FilesMatch "\.(sog|ply)$">
     ExpiresDefault "access plus 1 year"
+  </FilesMatch>
+</IfModule>
+
+# Dipisah dari blok di atas: Header milik mod_headers, bukan mod_expires.
+# Kalau digabung dan mod_headers mati, Apache membalas 500.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(sog|ply)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>
 
-# Proxy ke GeoServer, supaya front end bisa memanggil /geoserver tanpa
-# urusan CORS. Butuh mod_proxy dan mod_proxy_http diaktifkan di
-# httpd.conf. Kalau GeoServer tidak di port 8080, sesuaikan di sini.
-<IfModule mod_proxy.c>
-  ProxyPass        /geoserver http://localhost:8080/geoserver
-  ProxyPassReverse /geoserver http://localhost:8080/geoserver
-</IfModule>
+# CATATAN SOAL PROXY /geoserver
+#
+# ProxyPass TIDAK BOLEH ditulis di .htaccess. Apache hanya menerimanya di
+# httpd.conf atau di dalam <VirtualHost>, dan kalau tetap ditulis di sini
+# seluruh folder membalas 500 "ProxyPass not allowed here". Membungkusnya
+# dengan <IfModule mod_proxy.c> tidak menolong, karena yang salah adalah
+# konteksnya, bukan ada atau tidaknya modul.
+#
+# Ada dua cara memakai GeoServer dari halaman ini. Pilih salah satu.
+#
+# Cara 1, tanpa menyentuh httpd.conf: aktifkan CORS di GeoServer
+# (Security > CORS, izinkan http://localhost), lalu di js/config.js ubah
+#   export const GEOSERVER = 'http://localhost:8080/geoserver';
+#
+# Cara 2, lewat proxy: tambahkan baris berikut di httpd.conf XAMPP
+# (bukan di file ini), pastikan mod_proxy dan mod_proxy_http aktif, lalu
+# restart Apache. Biarkan GEOSERVER tetap '/geoserver' di config.js.
+#
+#   ProxyPass        /geoserver http://localhost:8080/geoserver
+#   ProxyPassReverse /geoserver http://localhost:8080/geoserver
