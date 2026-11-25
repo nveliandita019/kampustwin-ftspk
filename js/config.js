@@ -46,77 +46,97 @@ export const BEARING_AWAL = -20;
 export const ROTASI_ENU = [0, 0, 180];
 
 /**
- * Parameter georeferensi splat.
+ * Posisi splat di peta. SUDAH FIX — jangan diubah tanpa mengukur ulang.
  *
- * `dibake: false` berarti file .sog masih frame mentah hasil training:
- * belum metrik, belum berorientasi utara. Dalam keadaan itu `scale`
- * hanya angka coba-coba supaya splat kelihatan, dan posisinya tidak
- * berarti apa-apa secara geodetik.
+ * Angka ini hasil kalibrasi manual di atas peta, 25 November 2026,
+ * metode `kalibrasi_manual_di_peta`. Dulu dibaca saat jalan dari
+ * data/georef.json yang ditulis panel "Posisi splat"; panel itu, berkas
+ * itu, dan endpoint PHP penyimpannya sudah dicabut sekarang karena
+ * posisinya tidak berubah lagi. Nilainya dipindah ke sini apa adanya,
+ * jadi tampilannya persis sama dengan sebelum pencabutan.
  *
- * Setelah `tools/georef_colmap.py` menghasilkan s/R/t dan transform
- * di-bake ke .sog dengan `tools/bake.ps1`, setel `dibake: true`.
- * Mulai saat itu splat sudah dalam meter ENU, sehingga rotasi runtime
- * tinggal ROTASI_ENU dan skalanya faktor Mercator murni.
+ * Yang perlu diingat kalau suatu saat diutak-atik lagi:
+ *
+ *   rotation  derajat, Euler XYZ milik plugin — BUKAN ZYX milik
+ *             `splat-transform -r`. Jangan menyalin triple dari satu
+ *             alat ke alat lain tanpa dikonversi.
+ *   scale     bukan meter. Karena bug di plugin v0.2.9, scale s berarti
+ *             sekitar s x 38,78 m per unit model di lintang ini.
+ *             Penjelasannya di js/mercator.js.
+ *   altitude  meter, negatif berarti splat diturunkan supaya permukaan
+ *             tanahnya duduk di bidang nol, menyamai blok gedung.
+ *
+ * Cara mengukur ulangnya ada di tools/README.md. Jangan memakai
+ * means.mins/maxs di meta.json untuk menebak ukuran — itu rentang
+ * pendekodean domain-log, bukan posisi linear.
  */
-export const GEOREF = {
-  dibake: false,
-  lon: PUSAT[0],
-  lat: PUSAT[1],
-  alt: 0,
-  rmse_m: null,
-  rmse_validasi_m: null,
+export const GEOREF = Object.freeze({
+  longitude: 112.7940232242725,
+  latitude: -7.28065136184962,
+  altitude: -22.5,
+  rotation: Object.freeze([-91.5, -96, 0]),
+  scale: 1.1831,
+});
 
-  /**
-   * Rotasi dan skala sementara, hasil kalibrasi visual di browser
-   * (bukan hasil hitungan). Keduanya hanya supaya splat terlihat wajar
-   * sebelum solve Umeyama dijalankan.
-   *
-   * rotasiMentah [-90,0,0]: splat hasil training punya sumbu Y sebagai
-   * vertikal, sementara frame plugin memakai Z sebagai atas. Tanpa
-   * putaran ini splat berdiri tegak seperti papan, bukan terhampar.
-   *
-   * skalaMentah 0.43: bounding box splat terukur 12,05 x 2,56 x 13,58
-   * unit, dan 1 unit = 38,78 m pada lintang ini, jadi scale 1 memberi
-   * bentangan 467 m. Nilai 0,43 mendekatkannya ke ~200 m, kira-kira
-   * ukuran kompleks FTSPK. Ini TEBAKAN, bukan ukuran.
-   *
-   * Catatan: jangan memakai means.mins/maxs di meta.json untuk menebak
-   * ukuran. Itu rentang pendekodean domain-log, bukan posisi linear.
-   * Bentangan sesungguhnya dibaca dari mesh.getBoundingBox().
-   *
-   * Arah utara (putaran di sumbu Z) sengaja dibiarkan 0, karena tidak
-   * ada gunanya ditebak -- itu justru yang dihitung oleh solve.
-   */
-  rotasiMentah: [-90, 0, 0],
-  skalaMentah: 0.43,
+/**
+ * Berkas splat. Cuma satu, dan selalu kualitas penuh.
+ *
+ * Dulu ada dua: penuh dan versi decimate 800 ribu gaussian yang bisa
+ * dipilih di panel. Pilihan itu dicabut — yang tampil sekarang selalu
+ * yang penuh, jumlah dan susunan gaussian-nya persis sama dengan hasil
+ * export SuperSplat di splatftspk.html, jadi tampilannya juga sama.
+ * Berat gambarnya tidak ditentukan oleh jumlah gaussian melainkan oleh
+ * jumlah piksel yang harus dibayar tiap bingkai; itu diurus di
+ * js/map.js, bukan dengan membuang data.
+ *
+ * Hasil konversi splatftspk.sog ke SOG v2, tanpa decimate dan tanpa
+ * filter:
+ *
+ *   npx @playcanvas/splat-transform@3.12.0 splatftspk.sog \
+ *       data/splat/ftspk-penuh.sog --sog-version 2 -w
+ *
+ * Versi 2 wajib. Berkas asli adalah SOG v3, dan spark 0.1.10 -- yang
+ * dipakai maplibre-gl-splat 0.2.9 -- menolaknya dengan "Invalid PC SOGS
+ * zip file" karena hanya mengenali versi 1 dan 2. `-w` juga wajib: tanpa
+ * itu splat-transform menolak menimpa berkas lama sambil tetap keluar
+ * dengan kode 0, jadi konversinya gagal tanpa kelihatan gagal.
+ *
+ * Berkas ini satu-satunya .sog yang ikut git, supaya siapa pun yang
+ * clone langsung melihat splat yang sama di posisi yang sama. Sumbernya,
+ * splatftspk.sog, tetap di drive kelompok. Lihat .gitignore.
+ */
+export const SPLAT = {
+  url: 'data/splat/ftspk-penuh.sog',
+  jumlah: 2253073,
+  ukuran: '~30 MB',
 };
 
 /**
- * Dua versi file splat. Yang ringan jadi default supaya laptop kelas
- * menengah dan HP tidak langsung tersedak 33 MB.
+ * Tempelkan cap versi ke URL berkas splat.
  *
- * File .sog tidak masuk git (lihat .gitignore). Ambil dari drive kelompok
- * dan taruh sesuai path di bawah. Cara membuatnya ada di tools/README.md.
+ * Berkas .sog disajikan dengan `Cache-Control: immutable` selama setahun
+ * (lihat .htaccess), dan itu disengaja: ukurannya puluhan megabita dan
+ * itulah yang membuat ganti kualitas terasa instan. Tapi namanya tidak
+ * ikut berubah waktu modelnya dilatih ulang, jadi tanpa cap versi
+ * peramban terus menyajikan salinan lama -- dan menekan refresh tidak
+ * menolong, karena "immutable" justru berarti jangan diperiksa lagi.
+ *
+ * Capnya dibaca dari ETag atau Last-Modified pada balasan HEAD yang
+ * memang sudah dilakukan sebelum memuat, jadi tidak ada permintaan
+ * tambahan. Berkas diganti, cap berubah, URL berubah, unduhan barunya
+ * jalan sendiri. Berkas sama, URL sama, cache panjangnya tetap bekerja.
+ *
+ * @param {string} url      path berkas .sog
+ * @param {Response} balasan hasil fetch HEAD atas url itu
  */
-export const SPLAT = {
-  ringan: {
-    url: 'data/splat/ftspk-ringan.sog',
-    label: 'Ringan',
-    jumlah: 800000,
-    ukuran: '~12 MB',
-  },
-  // Menunjuk ke hasil bake, BUKAN ke splatftspk.sog di akar proyek.
-  // File asli itu SOG versi 3, dan spark 0.1.10 menolaknya dengan
-  // "Invalid PC SOGS zip file". tools/bake.ps1 mengeluarkan versi 2.
-  penuh: {
-    url: 'data/splat/ftspk-penuh.sog',
-    label: 'Penuh',
-    jumlah: 2283590,
-    ukuran: '~33 MB',
-  },
-};
-
-export const KUALITAS_AWAL = 'ringan';
+export function urlBerversi(url, balasan) {
+  const cap = balasan.headers.get('etag') || balasan.headers.get('last-modified');
+  if (!cap) return url;
+  /* ETag datang berkutip dan Last-Modified penuh spasi serta koma;
+     keduanya tidak aman ditaruh mentah-mentah di query. */
+  const bersih = cap.replace(/[^A-Za-z0-9]/g, '').slice(-20);
+  return bersih ? `${url}?v=${bersih}` : url;
+}
 
 /**
  * Layer dari GeoServer.
@@ -175,12 +195,21 @@ export const LAYERS = [
  */
 export function transformSplat() {
   return {
-    longitude: GEOREF.lon,
-    latitude: GEOREF.lat,
-    altitude: GEOREF.alt,
-    rotation: GEOREF.dibake ? ROTASI_ENU : GEOREF.rotasiMentah,
-    scale: GEOREF.dibake ? projectedUnitsPerMeter(GEOREF.lat) : GEOREF.skalaMentah,
+    longitude: GEOREF.longitude,
+    latitude: GEOREF.latitude,
+    altitude: GEOREF.altitude,
+    rotation: [...GEOREF.rotation],
+    scale: GEOREF.scale,
   };
+}
+
+/**
+ * Skala runtime seandainya file .sog sudah di-bake ke meter ENU lewat
+ * tools/bake.ps1. Tidak dipakai jalur kalibrasi manual, tapi disimpan
+ * di sini supaya jalur COLMAP tetap terdokumentasi.
+ */
+export function skalaUntukSplatMetrik() {
+  return projectedUnitsPerMeter(GEOREF.latitude);
 }
 
 /** URL WFS GeoJSON untuk satu typeName. */

@@ -4,7 +4,7 @@
  * dan menyediakan fungsi untuk memperbarui tampilan.
  */
 
-import { LAYERS, SPLAT, KUALITAS_AWAL, transformSplat } from './config.js';
+import { LAYERS } from './config.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -13,12 +13,10 @@ export function initPanel(handlers = {}) {
   pasangLipat();
 
   pasangSegmented('#seg-mode', 'mode', (v) => handlers.onMode?.(v));
-  pasangSegmented('#seg-kualitas', 'kualitas', (v) => handlers.onKualitas?.(v));
   pasangSegmented('#seg-basemap', 'basemap', (v) => handlers.onBasemap?.(v));
 
   const barisLayer = bangunDaftarLayer((id, aktif) => handlers.onLayer?.(id, aktif));
   pasangOpasitas((v) => handlers.onOpacity?.(v));
-  pasangDev((nilai) => handlers.onDevApply?.(nilai));
 
   return {
     setStatus(teks, keadaan = 'siap') {
@@ -37,10 +35,6 @@ export function initPanel(handlers = {}) {
 
     setInfoSplat(teks) {
       $('#info-splat').textContent = teks;
-    },
-
-    setInfoGeoref(teks) {
-      $('#info-georef').textContent = teks;
     },
 
     setCatatanMode(teks) {
@@ -66,10 +60,6 @@ export function initPanel(handlers = {}) {
       } else if (catatan) {
         b.small.textContent = catatan;
       }
-    },
-
-    setKualitasAktif(kualitas) {
-      terapkanSegmented('#seg-kualitas', 'kualitas', kualitas);
     },
 
     setModeAktif(mode) {
@@ -175,51 +165,4 @@ function pasangOpasitas(onUbah) {
     out.textContent = `${s.value}%`;
     onUbah(Number(s.value) / 100);
   });
-}
-
-/* ------------------------------------------------------------ panel dev -- */
-
-function pasangDev(onTerapkan) {
-  const aktif = new URLSearchParams(location.search).get('dev') === '1';
-  const dev = $('#dev');
-  if (!aktif) return;
-
-  dev.hidden = false;
-  // Diisi dari transform yang benar-benar dipakai, supaya panel ini
-  // tidak pernah berbeda dari yang dikirim ke loadSplat().
-  const t = transformSplat();
-  $('#dev-rx').value = t.rotation[0];
-  $('#dev-ry').value = t.rotation[1];
-  $('#dev-rz').value = t.rotation[2];
-  $('#dev-scale').value = t.scale;
-  $('#dev-alt').value = t.altitude;
-  $('#dev-lon').value = t.longitude;
-  $('#dev-lat').value = t.latitude;
-
-  $('#dev-apply').addEventListener('click', () => {
-    const awal = transformSplat();
-    const nilai = {
-      rotation: [
-        Number($('#dev-rx').value) || 0,
-        Number($('#dev-ry').value) || 0,
-        Number($('#dev-rz').value) || 0,
-      ],
-      scale: Number($('#dev-scale').value) || awal.scale,
-      alt: Number($('#dev-alt').value) || 0,
-      lon: Number($('#dev-lon').value) || awal.longitude,
-      lat: Number($('#dev-lat').value) || awal.latitude,
-    };
-    // Dicetak dalam bentuk yang bisa langsung disalin ke js/config.js
-    // begitu kalibrasinya cocok.
-    $('#dev-out').textContent =
-      `rotation: [${nilai.rotation.join(', ')}], scale: ${nilai.scale}, ` +
-      `alt: ${nilai.alt}, lon: ${nilai.lon}, lat: ${nilai.lat}`;
-    onTerapkan(nilai);
-  });
-}
-
-/** Label kualitas untuk readout info. */
-export function labelKualitas(kualitas) {
-  const d = SPLAT[kualitas] || SPLAT[KUALITAS_AWAL];
-  return `${d.label}, ${d.jumlah.toLocaleString('id-ID')} splat, ${d.ukuran}`;
 }

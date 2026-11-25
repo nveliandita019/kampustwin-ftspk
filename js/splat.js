@@ -9,8 +9,8 @@
  *    loadSplat / removeAllSplats secara programatik.
  *
  * 2. Tidak ada API terdokumentasi untuk mengubah posisi, rotasi, atau skala
- *    setelah splat dimuat. Jadi mengganti transform = muat ulang. File-nya
- *    sudah di cache browser, jadi yang terjadi hanya parse ulang.
+ *    setelah splat dimuat. Posisinya sekarang fix dan dikirim sekali lewat
+ *    opsi loadSplat, jadi itu tidak jadi masalah lagi.
  *
  * 3. Opasitas juga bukan opsi loadSplat. setOpacity() di bawah menebak
  *    struktur internal plugin untuk mencari SplatMesh-nya. Kalau tidak
@@ -18,7 +18,7 @@
  *    bukan diam-diam tidak melakukan apa pun.
  */
 
-import { SPLAT, transformSplat } from './config.js';
+import { SPLAT, transformSplat, urlBerversi } from './config.js';
 
 const CDN = 'maplibre-gl-splat';
 
@@ -27,7 +27,6 @@ export class Splat {
     this.map = map;
     this.control = null;
     this.layerId = null;
-    this.kualitas = null;
     this.tersedia = false;
     this.galat = null;
     this._pendengar = {};
@@ -73,23 +72,18 @@ export class Splat {
   }
 
   /**
-   * Muat satu kualitas ('ringan' | 'penuh'). Mengganti splat yang sedang
-   * tampil.
-   *
-   * `timpa` dipakai panel kalibrasi ?dev=1 untuk mencoba transform lain
-   * tanpa mengubah config.js.
+   * Muat splat pada posisi tetapnya.
    *
    * Splat lama dibuang SEBELUM yang baru dimuat, bukan sesudah. Menahan
-   * 33 MB dan 12 MB gaussian di memori GPU sekaligus bisa membuat laptop
-   * kehabisan memori video.
+   * dua set gaussian di memori video sekaligus bisa membuat laptop
+   * kehabisan VRAM.
    */
-  async muat(kualitas = 'ringan', timpa = null) {
+  async muat() {
     if (!this.tersedia) return false;
 
-    const def = SPLAT[kualitas];
-    if (!def) return false;
+    const def = SPLAT;
 
-    this._pancar('mulai', { kualitas, def });
+    this._pancar('mulai', { def });
     const t0 = performance.now();
 
     try {
@@ -97,29 +91,36 @@ export class Splat {
       // spark melempar error di luar rantai promise loadSplat, sehingga
       // lolos dari try/catch ini dan muncul sebagai "uncaught in promise"
       // -- sementara UI tetap mengira pemuatan berhasil.
-      const cek = await fetch(def.url, { method: 'HEAD' });
+      //
+      // no-store wajib di sini. Tanpa itu HEAD-nya sendiri bisa dijawab
+      // dari cache, lengkap dengan ETag lama, dan cap versi di bawah
+      // tidak pernah ikut berubah.
+      const cek = await fetch(def.url, { method: 'HEAD', cache: 'no-store' });
       if (!cek.ok) throw new Error(`HTTP ${cek.status}`);
+
+      // Cap versi dari balasan HEAD tadi, supaya model yang baru dilatih
+      // benar-benar terunduh dan bukan diambil dari cache setahun.
+      const url = urlBerversi(def.url, cek);
 
       this.control.removeAllSplats?.();
       this.layerId = null;
 
-      this.layerId = await this.control.loadSplat(def.url, {
-        ...transformSplat(),
-        ...(timpa || {}),
-      });
+      this.layerId = await this.control.loadSplat(url, transformSplat());
 
-      this.kualitas = kualitas;
       const detik = (performance.now() - t0) / 1000;
-      this._pancar('selesai', { kualitas, def, detik });
+      this._pancar('selesai', { def, detik });
       return true;
     } catch (err) {
-      // Penyebab paling umum: file .sog belum ada di data/splat/ karena
-      // tidak ikut git. Pesannya dibuat spesifik supaya tidak dikira
-      // masalah plugin.
+      // Berkas .sog ikut repo, jadi 404 di sini bukan lagi "belum
+      // disalin dari drive". Yang tersisa sebagai penyebab: clone-nya
+      // tidak utuh, atau .gitignore disetel ulang dan berkasnya ikut
+      // tersaring. Pesannya dibuat spesifik supaya tidak dikira masalah
+      // plugin.
       this.layerId = null;
       this.galat =
         err.message === 'HTTP 404'
-          ? `file ${def.url} tidak ada. Ambil dari drive kelompok, lihat tools/README.md`
+          ? `file ${def.url} tidak ada padahal ikut repo. Periksa clone Anda utuh, ` +
+            'dan `git check-ignore -v ' + def.url + '` tidak menyaringnya'
           : `gagal memuat ${def.url} (${err.message})`;
       console.warn('[splat]', this.galat);
       this._pancar('galat', this.galat);
@@ -131,7 +132,7 @@ export class Splat {
   async setTampil(tampil) {
     if (!this.tersedia) return;
     if (tampil) {
-      if (!this.layerId) await this.muat(this.kualitas || 'ringan');
+      if (!this.layerId) await this.muat();
     } else if (this.layerId) {
       this.control.removeAllSplats?.();
       this.layerId = null;

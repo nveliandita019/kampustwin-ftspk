@@ -3,197 +3,281 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>KampusTwin FTSPK</title>
-  <meta name="description" content="Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS.">
+  <title>KampusTwin FTSPK — digital twin FTSPK ITS</title>
+  <meta name="description" content="Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS. Enam departemen, satu kampus di Sukolilo, dipetakan tiga dimensi dan bisa dibuka langsung dari peramban.">
+  <link rel="icon" href="Perlogoan/logo-its-biru-transparan.png">
 
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="css/tema.css">
+  <link rel="stylesheet" href="css/beranda.css">
 
-  <!-- maplibre-gl-splat hanya terbit sebagai ESM, jadi dimuat lewat CDN.
+  <!-- Penanda ini yang menyalakan penyingkapan saat gulir. Kalau JavaScript
+       mati, kelasnya tidak pernah terpasang dan semua isi langsung terlihat,
+       bukan tertinggal transparan. -->
+  <script>document.documentElement.classList.add('js');</script>
 
-       Dua entri terakhir memperbaiki masalah "dua instance three.js":
-       bundel plugin mengimpor three@0.186.1, tetapi dua dependensinya
-       (@sparkjsdev/spark dan @dvt3d/maplibre-three-plugin) sama-sama
-       mengimpor three@0.178.0. Tanpa pengalihan ini halaman memuat dua
-       three sekaligus, dan objek dari yang satu tidak dikenali yang lain.
-       Semuanya disatukan ke 0.178.0, versi yang dipin dependensi terdalam.
-
-       Versi plugin dipin tepat di 0.2.9. Alasannya ada di js/mercator.js:
-       arti opsi `scale` bergantung pada sebuah bug di versi itu. -->
+  <!-- three.js dipin di 0.178.0, versi yang sama dengan yang dipakai
+       aplikasi peta, supaya tidak ada dua three di proyek ini. -->
   <script type="importmap">
-  {
-    "imports": {
-      "maplibre-gl-splat": "https://cdn.jsdelivr.net/npm/maplibre-gl-splat@0.2.9/+esm",
-      "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm": "https://cdn.jsdelivr.net/npm/three@0.178.0/+esm",
-      "https://cdn.jsdelivr.net/npm/three@0.186.1/addons/loaders/GLTFLoader.js/+esm": "https://cdn.jsdelivr.net/npm/three@0.178.0/addons/loaders/GLTFLoader.js/+esm"
-    }
-  }
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/+esm" } }
   </script>
 </head>
 <body>
 
-  <header class="app-header">
-    <div class="app-header__logos">
-      <img src="Perlogoan/logo-its-biru-transparan.png" alt="Logo ITS" width="30" height="30">
-      <img class="is-boxed" src="Perlogoan/logo-geomatika.jpg" alt="Logo Teknik Geomatika" width="28" height="28">
-    </div>
-    <div class="app-header__divider"></div>
-    <div class="app-header__title">
-      <strong>KampusTwin FTSPK</strong>
-      <span>Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS</span>
-    </div>
-    <div class="app-header__spacer"></div>
-    <p class="status-dot" id="status" data-state="siap"><span>Siap</span></p>
-  </header>
+<div class="graticule" aria-hidden="true"></div>
+<div class="laju" id="laju" aria-hidden="true"></div>
 
-  <div id="map"></div>
+<header class="pita" id="pita">
+  <a class="pita__merek" href="#atas">
+    <img src="Perlogoan/logo-its-biru-transparan.png" alt="" width="96" height="62">
+    <span>KampusTwin <b>FTSPK</b></span>
+  </a>
+  <nav class="pita__nav" aria-label="Bagian halaman">
+    <a href="#fakultas">Fakultas</a>
+    <a href="#departemen">Departemen</a>
+    <a href="#kampus">Kampus</a>
+  </nav>
+  <a class="tombol tombol--isi pita__aksi" href="peta.html">Buka peta 3D</a>
+</header>
 
-  <div class="loading" id="loading" hidden>
-    <div class="loading__spin"></div>
-    <div>
-      <div id="loading-text">Memuat splat</div>
-      <div class="loading__detail" id="loading-detail"></div>
+<main id="atas">
+
+  <!-- ========================================================= hero == -->
+  <section class="hero">
+    <div class="hero__cahaya" aria-hidden="true"></div>
+
+    <div class="hero__teks">
+      <h1 class="hero__judul">
+        <span class="baris"><span>Enam departemen,</span></span>
+        <span class="baris"><span>satu kampus,</span></span>
+        <span class="baris"><span>tiga dimensi.</span></span>
+      </h1>
+
+      <p class="hero__sub">
+        Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS — dipetakan
+        utuh di Sukolilo, dan bisa diputar langsung dari peramban.
+      </p>
+
+      <div class="hero__aksi">
+        <a class="tombol tombol--isi tombol--besar" href="peta.html">Buka peta 3D</a>
+        <a class="tombol tombol--garis tombol--besar" href="#fakultas">Kenali fakultasnya</a>
+      </div>
+
+      <dl class="hero__angka">
+        <div>
+          <dt>Departemen</dt>
+          <dd class="angka" data-hitung="6">0</dd>
+        </div>
+        <div>
+          <dt>Program studi</dt>
+          <dd class="angka" data-hitung="15">0</dd>
+        </div>
+        <div>
+          <dt>Akreditasi departemen</dt>
+          <dd class="angka angka--kata">Unggul</dd>
+        </div>
+      </dl>
     </div>
+
+    <figure class="medali">
+      <div class="medali__panggung">
+        <canvas id="logo-3d"></canvas>
+        <p class="panggung__gagal" id="logo-gagal" hidden>
+          Peramban ini tidak menyalakan WebGL, jadi lambang 3D-nya tidak
+          bisa digambar.
+        </p>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ====================================================== fakultas == -->
+  <section class="bagian bagian--kembar" id="fakultas">
+    <div class="bagian__teks">
+      <h2>Fakultas yang mengurus ruang, tanah, dan air</h2>
+      <p>
+        FT-SPK lahir dari penataan fakultas di ITS pada 2020. Enam
+        departemen di dalamnya berbagi satu pertanyaan yang sama: bagaimana
+        manusia menempati bumi dengan layak — dari pondasi gedung, tata guna
+        lahan, mutu air, sampai apa yang tersimpan di bawah permukaan.
+      </p>
+      <p>
+        Seluruh departemennya terakreditasi Unggul, enam program studinya
+        sudah terakreditasi internasional, dan kampusnya ada di Sukolilo,
+        Surabaya. Kampus itulah yang dipetakan di sini.
+      </p>
+      <a class="tombol tombol--garis" href="#departemen">Lihat keenamnya</a>
+    </div>
+
+    <figure class="sorot" data-parallax="14">
+      <img src="gambar/gedung-pwk.jpg"
+           alt="Gedung Departemen Perencanaan Wilayah dan Kota di kampus ITS Sukolilo"
+           width="1024" height="768" loading="lazy" decoding="async">
+      <figcaption>
+        <b>Sukolilo, Surabaya</b>
+        <span>Gedung departemen di lingkungan FT-SPK</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ==================================================== departemen == -->
+  <section class="bagian" id="departemen">
+    <h2>Enam departemen</h2>
+    <p class="bagian__intro">
+      Enam program sarjana dan sembilan program pascasarjana bernaung di
+      bawahnya. Arahkan kursor ke salah satu kartu untuk melihatnya menyala.
+    </p>
+
+    <ul class="dep">
+      <li class="dep__kartu" data-sorot data-muncul style="--rona: 214">
+        <span class="dep__kode">01</span>
+        <h3>Teknik Sipil</h3>
+        <p>Struktur, jembatan, dan jalan — yang menahan beban kota setiap hari.</p>
+      </li>
+      <li class="dep__kartu" data-sorot data-muncul style="--rona: 206">
+        <span class="dep__kode">02</span>
+        <h3>Arsitektur</h3>
+        <p>Bentuk ruang dan cara orang benar-benar memakainya.</p>
+      </li>
+      <li class="dep__kartu" data-sorot data-muncul style="--rona: 198">
+        <span class="dep__kode">03</span>
+        <h3>Teknik Lingkungan</h3>
+        <p>Air bersih, pengelolaan limbah, dan udara yang layak dihirup.</p>
+      </li>
+      <li class="dep__kartu" data-sorot data-muncul style="--rona: 222">
+        <span class="dep__kode">04</span>
+        <h3>Perencanaan Wilayah dan Kota</h3>
+        <p>Menata guna lahan dan menentukan ke mana sebuah kota tumbuh.</p>
+      </li>
+      <li class="dep__kartu dep__kartu--kami" data-sorot data-muncul style="--rona: 210">
+        <span class="dep__kode">05</span>
+        <h3>Teknik Geomatika</h3>
+        <p>Mengukur bumi: survei, penginderaan jauh, dan peta. Proyek ini lahir di sini.</p>
+      </li>
+      <li class="dep__kartu" data-sorot data-muncul style="--rona: 202">
+        <span class="dep__kode">06</span>
+        <h3>Teknik Geofisika</h3>
+        <p>Membaca apa yang tersimpan di bawah permukaan tanah.</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ======================================================= galeri == -->
+  <section class="galeri" id="kampus" aria-labelledby="galeri-judul">
+    <h2 class="galeri__judul" id="galeri-judul">Yang dikerjakan di sini</h2>
+
+    <figure class="bingkai bingkai--tinggi" data-muncul data-parallax="10">
+      <img src="gambar/total-station.jpg"
+           alt="Total station berdiri di atas tripod di halaman kampus ITS"
+           width="1024" height="682" loading="lazy" decoding="async">
+      <figcaption>
+        <b>Mengukur</b>
+        <span>Total station di halaman Teknik Geomatika</span>
+      </figcaption>
+    </figure>
+
+    <figure class="bingkai bingkai--lebar" data-muncul>
+      <img src="gambar/lapangan-geofisika.jpg"
+           alt="Mahasiswa melakukan pengukuran lapangan di kaki gunung berapi"
+           width="1024" height="463" loading="lazy" decoding="async">
+      <figcaption>
+        <b>Turun ke lapangan</b>
+        <span>Kerja lapangan Teknik Geofisika</span>
+      </figcaption>
+    </figure>
+
+    <figure class="bingkai" data-muncul>
+      <img src="gambar/laboratorium.jpg"
+           alt="Ruang laboratorium dengan deretan meja kerja dan peralatan uji"
+           width="1024" height="496" loading="lazy" decoding="async">
+      <figcaption>
+        <b>Menguji</b>
+        <span>Laboratorium Teknik Lingkungan</span>
+      </figcaption>
+    </figure>
+
+    <figure class="bingkai bingkai--pita" data-muncul data-parallax="8">
+      <img src="gambar/perpustakaan.jpg"
+           alt="Gedung Perpustakaan ITS pada malam hari dengan jendela yang menyala"
+           width="1920" height="960" loading="lazy" decoding="async">
+      <figcaption>
+        <b>Perpustakaan ITS</b>
+        <span>Kampus Sukolilo, malam hari</span>
+      </figcaption>
+    </figure>
+
+    <figure class="bingkai" data-muncul>
+      <img src="gambar/halaman-kampus.jpg"
+           alt="Halaman dalam gedung kampus ITS dilihat dari lantai atas"
+           width="1024" height="488" loading="lazy" decoding="async">
+      <figcaption>
+        <b>Halaman dalam</b>
+        <span>Ruang terbuka antargedung</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================================================== tampilan == -->
+  <section class="bagian bagian--kembar" id="tampilan">
+    <div class="bagian__teks">
+      <h2>Tiga cara melihat kampus yang sama</h2>
+      <p>
+        Gedung bisa ditampilkan padat seperti aslinya, sebagai blok polos
+        untuk membaca massa dan ketinggian, atau sebagai titik ukur ketika
+        yang dicari adalah koordinat. Tombol di bawah model memakai prinsip
+        yang sama dengan tombol mode di dalam peta.
+      </p>
+      <a class="tombol tombol--garis" href="peta.html">Coba di peta</a>
+    </div>
+
+    <figure class="panggung">
+      <div class="panggung__kanvas" id="panggung">
+        <canvas id="hero-3d"></canvas>
+        <p class="panggung__gagal" id="panggung-gagal" hidden>
+          Peramban ini tidak menyalakan WebGL, jadi model 3D-nya tidak bisa
+          digambar. Peta 3D-nya tetap bisa dicoba.
+        </p>
+      </div>
+
+      <figcaption class="panggung__kaki">
+        <div class="ragam" role="group" aria-label="Cara menggambar model">
+          <button type="button" data-ragam="padat" aria-pressed="true">Padat</button>
+          <button type="button" data-ragam="blok" aria-pressed="false">Blok</button>
+          <button type="button" data-ragam="titik" aria-pressed="false">Titik</button>
+        </div>
+        <span class="panggung__nota">Gedung Rektorat ITS, model ilustratif — sisi dan belakangnya dikira-kira.</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ======================================================== ajakan == -->
+  <section class="ajakan">
+    <h2>Kampusnya sudah siap diputar.</h2>
+    <p>Peta terbuka langsung pada kualitas penuh.</p>
+    <a class="tombol tombol--terang tombol--besar" href="peta.html">Buka peta 3D</a>
+  </section>
+
+</main>
+
+<footer class="kaki">
+  <div class="kaki__merek">
+    <img src="Perlogoan/logo-its-biru-transparan.png" alt="Logo Institut Teknologi Sepuluh Nopember" width="130" height="84">
+    <img class="kaki__kotak" src="Perlogoan/logo-geomatika.jpg" alt="Logo Departemen Teknik Geomatika" width="56" height="56">
   </div>
 
-  <aside class="panel" id="panel">
-    <div class="panel__head">
-      <h2>Kontrol</h2>
-      <button class="icon-btn panel__collapse" id="panel-collapse" type="button"
-              aria-expanded="true" aria-controls="panel-body" title="Lipat panel">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 6l-6 6 6 6"/><path d="M19 6l-6 6 6 6"/></svg>
-      </button>
-    </div>
+  <p class="kaki__teks">
+    Tugas kelompok Sistem Informasi Geospasial Berbasis Web, Departemen
+    Teknik Geomatika, Fakultas Teknik Sipil, Perencanaan, dan Kebumian,
+    Institut Teknologi Sepuluh Nopember — Jl. Raya ITS, Sukolilo, Surabaya.
+  </p>
 
-    <div class="panel__body" id="panel-body">
+  <p class="kaki__kredit">
+    Keterangan fakultas dirangkum dari laman resmi
+    <a href="https://www.its.ac.id/fakultas/ftspk/profil/" rel="noopener" target="_blank">FT-SPK ITS</a>.
+    Foto kampus milik ITS dan Wikimedia Commons; daftar lengkapnya ada di
+    <code>gambar/SUMBER.md</code>.
+  </p>
+</footer>
 
-      <!-- 1. Tampilan 3D -->
-      <section class="sect" data-open="true">
-        <button class="sect__head" type="button">
-          <h3>Tampilan 3D</h3>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="sect__content">
-          <div class="seg" id="seg-mode" role="group" aria-label="Mode tampilan">
-            <button type="button" data-mode="splat" aria-pressed="true">Splat 3D</button>
-            <button type="button" data-mode="blok" aria-pressed="false">Blok 3D</button>
-            <button type="button" data-mode="2d" aria-pressed="false">2D</button>
-          </div>
-          <p class="note" id="mode-note">Gaussian splatting hasil pemotretan drone FTSPK.</p>
-
-          <div class="field">
-            <div class="field__top">
-              <label>Kualitas splat</label>
-            </div>
-            <div class="seg" id="seg-kualitas" role="group" aria-label="Kualitas splat">
-              <button type="button" data-kualitas="ringan" aria-pressed="true">Ringan</button>
-              <button type="button" data-kualitas="penuh" aria-pressed="false">Penuh</button>
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="field__top">
-              <label for="splat-opacity">Opasitas splat</label>
-              <output id="splat-opacity-out">100%</output>
-            </div>
-            <input type="range" id="splat-opacity" min="20" max="100" step="5" value="100">
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. Layer -->
-      <section class="sect" data-open="true">
-        <button class="sect__head" type="button">
-          <h3>Layer</h3>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="sect__content" id="layer-list">
-          <!-- diisi oleh js/panel.js dari daftar di js/config.js -->
-        </div>
-      </section>
-
-      <!-- 3. Basemap -->
-      <section class="sect" data-open="false">
-        <button class="sect__head" type="button">
-          <h3>Basemap</h3>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="sect__content">
-          <div class="seg" id="seg-basemap" role="group" aria-label="Basemap">
-            <button type="button" data-basemap="gelap" aria-pressed="true">Gelap</button>
-            <button type="button" data-basemap="satelit" aria-pressed="false">Satelit</button>
-            <button type="button" data-basemap="osm" aria-pressed="false">OSM</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. Simulasi -->
-      <section class="sect" data-open="false">
-        <button class="sect__head" type="button">
-          <h3>Simulasi</h3>
-          <span class="badge">Segera</span>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="sect__content">
-          <div class="row">
-            <span class="swatch" style="background: var(--flood)"></span>
-            <span class="row__label"><span>Genangan banjir</span><small>butuh DEM DEMNAS</small></span>
-            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
-          </div>
-          <div class="row">
-            <span class="swatch" style="background: var(--fire)"></span>
-            <span class="row__label"><span>Zona kebakaran</span><small>butuh tabel skenario</small></span>
-            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
-          </div>
-          <div class="row">
-            <span class="swatch" style="background: var(--evac)"></span>
-            <span class="row__label"><span>Jalur evakuasi</span><small>butuh pgRouting</small></span>
-            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
-          </div>
-          <p class="note">Ketiga simulasi dirancang pada Tahap 3. Lihat <code>docs/</code>.</p>
-        </div>
-      </section>
-
-      <!-- 5. Info -->
-      <section class="sect" data-open="false">
-        <button class="sect__head" type="button">
-          <h3>Info</h3>
-          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="sect__content">
-          <div class="legend">
-            <div class="legend__item"><span class="swatch" style="background: var(--accent)"></span>Bounding box gedung</div>
-            <div class="legend__item"><span class="swatch" style="background: var(--flood)"></span>Sungai dan genangan</div>
-            <div class="legend__item"><span class="swatch" style="background: var(--evac)"></span>Jalur evakuasi</div>
-          </div>
-          <p class="note">
-            Data: GeoServer <code>ftspk</code> + PostGIS <code>ftspk_twin</code>.
-            Splat: <span id="info-splat">belum dimuat</span>.
-          </p>
-          <p class="note" id="info-georef">Georeferensi: belum dikalibrasi.</p>
-        </div>
-      </section>
-
-    </div>
-  </aside>
-
-  <!-- Panel kalibrasi, hanya tampil dengan ?dev=1 -->
-  <div class="dev" id="dev" hidden>
-    <h3>Kalibrasi splat</h3>
-    <div class="dev__grid">
-      <label>Rot X<input type="number" id="dev-rx" step="5" value="0"></label>
-      <label>Rot Y<input type="number" id="dev-ry" step="5" value="0"></label>
-      <label>Rot Z<input type="number" id="dev-rz" step="5" value="0"></label>
-      <label>Skala<input type="number" id="dev-scale" step="1" value="1"></label>
-      <label>Alt m<input type="number" id="dev-alt" step="1" value="0"></label>
-      <label>Lon<input type="number" id="dev-lon" step="0.0001"></label>
-      <label>Lat<input type="number" id="dev-lat" step="0.0001"></label>
-    </div>
-    <button class="btn" id="dev-apply" type="button">Terapkan</button>
-    <p class="dev__out" id="dev-out"></p>
-  </div>
-
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="js/main.js"></script>
+<script type="module" src="js/beranda.js"></script>
 </body>
 </html>

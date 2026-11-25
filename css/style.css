@@ -1,63 +1,43 @@
 /* ==========================================================================
-   KampusTwin FTSPK - tema gelap
-   Token warna ada di :root. Ubah di satu tempat itu saja, jangan
-   menulis nilai hex langsung di aturan di bawahnya.
+   KampusTwin FTSPK - tema terang putih-biru ITS
+
+   Warna dan huruf pokoknya ada di css/tema.css, satu berkas yang dipakai
+   bersama halaman depan. Di sini token lama aplikasi peta hanya dipetakan
+   ulang ke token tema itu, jadi ratusan aturan di bawahnya tidak perlu
+   disentuh. Kalau mau mengubah warna, ubah di css/tema.css.
+
+   Urutan muat di peta.html wajib tema.css dulu, baru style.css.
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 :root {
-  /* Permukaan */
-  --bg-0: #0a0e14;
-  --bg-1: #121821;
-  --bg-2: #1b2430;
-  --bg-3: #232f3d;
+  /* Permukaan, dari yang paling jauh ke yang paling dekat ke mata */
+  --bg-0: #e9f1f8;          /* latar di belakang peta */
+  --bg-1: var(--putih);     /* panel dan header */
+  --bg-2: var(--biru-kabut);
+  --bg-3: var(--biru-pucat);
 
   /* Merek dan aksi */
-  --its-blue: #0b4da2;
-  --accent: #3b9eff;
-  --accent-soft: rgba(59, 158, 255, 0.14);
-  --accent-line: rgba(59, 158, 255, 0.45);
+  --its-blue: var(--biru);
+  --accent: var(--biru);
+  --accent-soft: rgba(0, 103, 174, 0.1);
+  --accent-line: rgba(0, 103, 174, 0.4);
 
   /* Teks. text-2 hanya untuk label, bukan isi penting. */
-  --text-0: #f2f5f8;
-  --text-1: #a8b4c4;
-  --text-2: #8695a8;
+  --text-0: var(--tinta);
+  --text-1: var(--tinta-2);
+  --text-2: var(--tinta-3);
 
-  /* Semantik simulasi */
-  --flood: #3b9eff;
-  --fire: #ff5a36;
-  --evac: #22c55e;
-  --warn: #f5a524;
+  /* Garis. Panel transparan di atas peta butuh putih yang lebih pekat
+     daripada halaman depan, supaya teksnya tetap terbaca di atas citra
+     satelit. */
+  --line: var(--garis);
+  --line-strong: var(--garis-kuat);
+  --glass: rgba(255, 255, 255, 0.9);
 
-  /* Garis dan bayangan */
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.14);
-  --glass: rgba(18, 24, 33, 0.82);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
-
-  /* Bentuk dan jarak */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 24px;
-
-  /* Ukuran tetap */
+  /* Ukuran tetap, hanya dipakai aplikasi peta */
   --header-h: 56px;
   --panel-w: 320px;
   --rail-w: 48px;
-
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
-
-  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
-
-  color-scheme: dark;
 }
 
 /* --------------------------------------------------------------- reset -- */
@@ -107,7 +87,7 @@ select {
   align-items: center;
   gap: var(--sp-3);
   padding: 0 var(--sp-4);
-  background: linear-gradient(to bottom, rgba(10, 14, 20, 0.96), rgba(10, 14, 20, 0.84));
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82));
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
@@ -119,16 +99,23 @@ select {
   flex-shrink: 0;
 }
 
+/* Logo ITS dipotong ke perisainya saja. Tulisan "Institut Teknologi
+   Sepuluh Nopember" pada lockup penuh tidak terbaca di ketinggian 30 px,
+   dan kalau diregangkan jadi gepeng. */
 .app-header__logos img {
   display: block;
   height: 30px;
-  width: auto;
+  width: 21px;
+  object-fit: cover;
+  object-position: left center;
 }
 
 /* Logo geomatika berlatar putih, jadi dibulatkan supaya tidak
-   terlihat seperti tempelan kotak di header gelap. */
+   terlihat seperti tempelan kotak di header terang. */
 .app-header__logos img.is-boxed {
   height: 28px;
+  width: 28px;
+  object-fit: contain;
   border-radius: 6px;
 }
 
@@ -234,7 +221,7 @@ select {
 }
 
 .maplibregl-ctrl-attrib {
-  background: rgba(10, 14, 20, 0.8) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
   border-radius: 4px 0 0 0;
 }
 
@@ -315,7 +302,7 @@ select {
 }
 
 .panel__body::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--accent-line);
 }
 
 /* Keadaan terlipat: panel menyusut jadi rail ikon. */
@@ -391,7 +378,7 @@ select {
 }
 
 .sect__head:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--biru-kabut);
 }
 
 .sect__head h3 {
@@ -513,7 +500,7 @@ select {
   height: 10px;
   border-radius: 3px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
 
 .switch {
@@ -667,6 +654,35 @@ input[type='range']:disabled {
   color: var(--text-1);
 }
 
+/* ------------------------------------------------- tombol dan utilitas -- */
+
+.note.mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-1);
+  word-break: break-all;
+}
+
+.btn--sunyi {
+  background: var(--bg-2);
+  border-color: var(--line);
+  color: var(--text-1);
+}
+
+.btn--sunyi:hover {
+  background: var(--bg-3);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.badge.ok {
+  background: rgba(34, 197, 94, 0.16);
+  color: var(--evac);
+}
+
 /* --------------------------------------------------------------- popup -- */
 
 .maplibregl-popup-content {
@@ -705,7 +721,7 @@ input[type='range']:disabled {
 
 .pop__head {
   padding: var(--sp-3) 34px var(--sp-3) var(--sp-4);
-  background: linear-gradient(135deg, var(--its-blue), #0a3a7a);
+  background: linear-gradient(135deg, var(--its-blue), var(--biru-tua));
 }
 
 .pop__head strong {
@@ -827,61 +843,7 @@ input[type='range']:disabled {
   color: var(--text-2);
 }
 
-/* ----------------------------------------------------------- dev panel -- */
-
-.dev {
-  position: absolute;
-  left: var(--sp-4);
-  bottom: var(--sp-4);
-  z-index: 15;
-  width: 232px;
-  padding: var(--sp-3);
-  background: var(--glass);
-  backdrop-filter: blur(16px);
-  border: 1px dashed var(--warn);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-lg);
-}
-
-.dev[hidden] {
-  display: none;
-}
-
-.dev h3 {
-  margin: 0 0 var(--sp-3);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--warn);
-}
-
-.dev__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-3);
-}
-
-.dev__grid label {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 9px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-
-.dev input {
-  width: 100%;
-  padding: 5px 6px;
-  background: var(--bg-0);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
+/* ---------------------------------------------------------------- tombol -- */
 
 .btn {
   width: 100%;
@@ -897,16 +859,7 @@ input[type='range']:disabled {
 }
 
 .btn:hover {
-  background: rgba(59, 158, 255, 0.24);
-}
-
-.dev__out {
-  margin: var(--sp-2) 0 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--text-2);
-  word-break: break-all;
+  background: var(--biru-pucat);
 }
 
 /* ----------------------------------------------------------- responsif -- */
@@ -973,21 +926,23 @@ input[type='range']:disabled {
     transform: rotate(180deg);
   }
 
-  .dev {
-    display: none;
-  }
-
   .maplibregl-ctrl-bottom-right {
     margin-bottom: 56px;
   }
 }
 
+/*
+ * Gerakannya dipercepat, bukan dipadamkan. Windows mengirim sinyal ini
+ * begitu "Show animations" dimatikan di Settings, sering tanpa disadari
+ * pemiliknya, dan panel yang berpindah tanpa transisi sama sekali justru
+ * lebih sulit diikuti mata. 120 ms cukup pendek untuk terasa seketika.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 120ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 120ms !important;
   }
 }

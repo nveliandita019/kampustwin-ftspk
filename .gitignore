@@ -8,12 +8,28 @@ Thumbs.db
 data/*.tif
 data/*.zip
 
-# File Gaussian splatting. splatftspk.sog saja 33 MB, dan hasil bake
-# di data/splat/ lebih besar lagi. Semuanya bisa dibuat ulang dari
-# data mentah, jadi bagikan lewat drive kelompok. Lihat tools/README.md.
+# File Gaussian splatting.
+#
+# Tepat satu yang ikut git: data/splat/ftspk-penuh.sog, sekitar 30 MB.
+# Dengan begitu siapa pun yang clone langsung melihat splat yang sama
+# persis, di posisi yang sama, tanpa menyalin apa pun lewat drive.
+# Sisanya tidak ikut: splatftspk.sog (34 MB) adalah berkas sumber yang
+# ftspk-penuh dibuat darinya, dan ftspk-ringan.sog sudah tidak dipakai
+# sejak pilihan kualitas dicabut.
+#
+# JANGAN menulis `data/splat/` di sini. Itu pengecualian direktori, dan
+# Git tidak masuk ke direktori yang sudah dikecualikan -- negasi di
+# bawahnya tidak akan pernah terbaca. Harus pola berkas lalu negasinya,
+# seperti di bawah ini.
+#
+# Dan ingat waktu menambah versi baru: .sog itu zip, jadi Git tidak bisa
+# memampatkannya maupun menyimpan selisih antarversi. Tiap commit
+# menyimpan 30 MB utuh, selamanya, dan ikut terunduh setiap orang setiap
+# clone. Commit berkas ini hanya kalau modelnya benar-benar berubah
+# untuk seluruh tim, bukan tiap percobaan.
 *.sog
 *.ply
-data/splat/
+!data/splat/ftspk-penuh.sog
 
 # Knowledge graph graphify. Bisa dibuat ulang dengan /graphify, dan
 # .graphify_python berisi path absolut komputer masing-masing.

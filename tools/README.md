@@ -15,8 +15,43 @@ pip install -r tools/requirements.txt
 npm install -g @playcanvas/splat-transform
 ```
 
-File `.sog` tidak ikut git (lihat `.gitignore`). Ambil dari drive
-kelompok dan taruh di akar proyek sebagai `splatftspk.sog`.
+Berkas sumbernya tidak ikut git. Ambil dari drive kelompok dan taruh di
+akar proyek sebagai `splatftspk.sog`. Alat di folder ini baru perlu
+dijalankan kalau Anda mengekspor ulang modelnya — hasil konversinya,
+`data/splat/ftspk-penuh.sog`, sudah ikut repo, jadi untuk sekadar
+menjalankan peta tidak ada yang perlu disalin.
+
+## Jalur cepat: kualitas penuh tanpa bake
+
+Kalau Anda belum mengerjakan COLMAP dan hanya ingin splat tampil di peta
+dengan kualitas yang sama persis seperti hasil export SuperSplat, cukup
+konversi versi SOG-nya. Tidak ada decimate, tidak ada filter, jadi isinya
+identik -- 2.253.073 gaussian dengan SH 3 band:
+
+```powershell
+npx --yes @playcanvas/splat-transform@3.12.0 splatftspk.sog data/splat/ftspk-penuh.sog --sog-version 2 -w
+```
+
+Versi 2 wajib, alasannya ada di bagian "Hal-hal yang sudah diuji" di
+bawah. Hasilnya sekitar 30 MB dan langsung dipakai sebagai kualitas
+default oleh `js/config.js`.
+
+**`-w` juga wajib begitu Anda mengekspor ulang.** Tanpa flag itu
+splat-transform menolak menimpa berkas yang sudah ada -- dan yang
+menyesatkan, ia tetap keluar dengan kode 0. Jadi tidak ada yang tampak
+gagal: peta hanya terus memakai model lama. Kalau model baru Anda tidak
+muncul di peta, periksa tanggal ubah `data/splat/ftspk-penuh.sog` lebih
+dulu, sebelum mencurigai cache atau plugin.
+
+Versi ringan (cadangan untuk perangkat lemah) dibuat dengan decimate:
+
+```powershell
+npx --yes @playcanvas/splat-transform@3.12.0 data/splat/ftspk-penuh.sog -d 800000 "$env:TEMPingan.ply" -w
+npx --yes @playcanvas/splat-transform@3.12.0 "$env:TEMPingan.ply" data/splat/ftspk-ringan.sog --sog-version 2 -w
+```
+
+Posisi, rotasi, dan skalanya lalu diatur lewat panel "Posisi splat" di
+halaman, bukan lewat bake. Hasilnya tersimpan di `data/georef.json`.
 
 ## Langkah
 
@@ -126,7 +161,7 @@ datar, bukan berdiri seperti papan.
 
 **Ada dua instance three.js kalau tidak ditangani.** Bundel plugin
 mengimpor `three@0.186.1`, tapi spark dan maplibre-three-plugin
-mengimpor `three@0.178.0`. Import map di `index.html` menyatukannya ke
+mengimpor `three@0.178.0`. Import map di `peta.html` menyatukannya ke
 0.178.0. Tanpa itu objek dari satu instance tidak dikenali yang lain.
 
 **Urutan Euler berbeda antar alat.** `splat-transform -r` memakai ZYX,

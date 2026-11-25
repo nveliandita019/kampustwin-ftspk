@@ -1,0 +1,841 @@
+/* ==========================================================================
+   KampusTwin FTSPK — halaman depan
+
+   Warna dan huruf ada di css/tema.css. Jangan menulis hex di sini kecuali
+   putih murni di atas latar biru.
+
+   Aturan tampilannya: halaman meniru lembar peta. Latarnya graticule biru
+   samar, pemisahnya garis tipis biru, dan kedalamannya datang dari dua
+   model 3D, bukan dari tumpukan kartu berbayang.
+
+   Gradasi dipakai di tiga tempat saja supaya tidak jadi hiasan: cahaya di
+   belakang lambang, lapis biru di atas foto, dan sorot yang mengikuti
+   kursor pada kartu departemen. Selebihnya tetap putih dan garis.
+
+   Soal gerakan: lihat catatan di blok prefers-reduced-motion paling bawah.
+   ========================================================================== */
+
+/* Sebagian aturan di bawah memakai display: block / grid / flex, yang kalah
+   spesifisitas lawan [hidden] bawaan peramban. Dikunci di sini. */
+[hidden] { display: none !important; }
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+/* Pita atas menempel, jadi lompatan dari menu harus menyisakan ruang
+   setinggi pita — kalau tidak, judul bagiannya tertutup. */
+:target,
+main > section[id] { scroll-margin-top: 76px; }
+
+body {
+  margin: 0;
+  background: var(--kertas);
+  color: var(--tinta);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img { max-width: 100%; }
+
+a { color: var(--biru); }
+
+h1, h2, h3 {
+  font-family: var(--font-judul);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Satuan gerak. Blok reduced-motion di bawah cuma mengubah angka ini. */
+:root {
+  --lama-singkap: 0.95s;
+  --lama-muncul: 0.7s;
+  --geser-muncul: 10px;
+  --lama-gambar: 1.1s;
+}
+
+/* ------------------------------------------------------------ graticule -- */
+
+.graticule {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--garis-tipis) 1px, transparent 1px),
+    linear-gradient(90deg, var(--garis-tipis) 1px, transparent 1px),
+    linear-gradient(var(--garis) 1px, transparent 1px),
+    linear-gradient(90deg, var(--garis) 1px, transparent 1px);
+  background-size: 44px 44px, 44px 44px, 220px 220px, 220px 220px;
+  mask-image: radial-gradient(130% 80% at 72% 0%, #000 0%, rgba(0, 0, 0, 0.3) 52%, transparent 100%);
+}
+
+/* ---------------------------------------------------------- laju gulir -- */
+
+/* Garis setipis rambut di tepi atas: satu-satunya penunjuk posisi di
+   halaman ini, menggantikan angka koordinat yang dulu ikut bergeser. */
+.laju {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 60;
+  pointer-events: none;
+  transform: scaleX(var(--laju, 0));
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--biru-terang), var(--biru) 55%, var(--biru-tua));
+}
+
+/* ------------------------------------------------------------- pita atas -- */
+
+.pita {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-3) clamp(16px, 4vw, 48px);
+  background: rgba(251, 252, 254, 0.72);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+}
+
+.pita.is-lekat {
+  border-bottom-color: var(--garis);
+  background: rgba(251, 252, 254, 0.92);
+}
+
+.pita__merek {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-right: auto;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Logo ITS dipotong ke perisainya saja. */
+.pita__merek img {
+  width: 21px;
+  height: 30px;
+  object-fit: cover;
+  object-position: left center;
+}
+
+.pita__merek b { font-weight: 800; }
+
+.pita__nav {
+  display: flex;
+  gap: var(--sp-5);
+}
+
+.pita__nav a {
+  position: relative;
+  text-decoration: none;
+  color: var(--tinta-2);
+  font-size: 14px;
+  padding-block: 4px;
+  transition: color 0.25s var(--ease);
+}
+
+.pita__nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--biru);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s var(--ease);
+}
+
+.pita__nav a:hover { color: var(--biru); }
+.pita__nav a.is-kini { color: var(--biru); }
+.pita__nav a.is-kini::after { transform: scaleX(1); }
+
+/* --------------------------------------------------------------- tombol -- */
+
+.tombol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease),
+    border-color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.tombol--besar { padding: 14px 26px; font-size: 15px; }
+
+.tombol--isi {
+  background: var(--biru);
+  color: #fff;
+}
+.tombol--isi:hover {
+  background: var(--biru-tua);
+  transform: translateY(-1px);
+}
+
+.tombol--garis {
+  border-color: var(--garis-kuat);
+  color: var(--biru);
+  background: transparent;
+}
+.tombol--garis:hover {
+  background: var(--biru-kabut);
+  border-color: var(--biru);
+}
+
+.tombol--terang {
+  background: #fff;
+  color: var(--biru-tua);
+}
+.tombol--terang:hover { transform: translateY(-1px); }
+
+/* ----------------------------------------------------------------- hero -- */
+
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 72px);
+  max-width: 1340px;
+  margin-inline: auto;
+  padding: clamp(40px, 7vw, 96px) clamp(16px, 4vw, 48px) clamp(48px, 8vw, 104px);
+}
+
+/* Gradasi lembut di belakang medali, bukan bayangan kotak. */
+.hero__cahaya {
+  position: absolute;
+  z-index: -1;
+  right: -6%;
+  top: 2%;
+  width: 72%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side, rgba(124, 194, 232, 0.4), rgba(124, 194, 232, 0) 70%),
+    radial-gradient(closest-side at 65% 60%, rgba(0, 103, 174, 0.2), rgba(0, 103, 174, 0) 72%);
+}
+
+.hero__judul {
+  font-size: clamp(2.4rem, 5.8vw, 4.6rem);
+  line-height: 1.04;
+  font-variation-settings: 'opsz' 48;
+}
+
+.hero__judul .baris {
+  display: block;
+  overflow: hidden;
+}
+
+.hero__judul .baris > span {
+  display: block;
+  transform: translateY(102%);
+  animation: singkap var(--lama-singkap) var(--ease-keluar) forwards;
+}
+
+.hero__judul .baris:nth-child(1) > span { animation-delay: 0.1s; }
+.hero__judul .baris:nth-child(2) > span { animation-delay: 0.21s; }
+.hero__judul .baris:nth-child(3) > span { animation-delay: 0.32s; }
+
+@keyframes singkap { to { transform: translateY(0); } }
+
+.hero__sub {
+  max-width: 46ch;
+  margin: var(--sp-5) 0 0;
+  color: var(--tinta-2);
+  font-size: clamp(1rem, 1.5vw, 1.12rem);
+  animation: naik var(--lama-muncul) var(--ease-keluar) 0.5s backwards;
+}
+
+.hero__aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+  animation: naik var(--lama-muncul) var(--ease-keluar) 0.62s backwards;
+}
+
+@keyframes naik {
+  from { opacity: 0; transform: translateY(var(--geser-muncul)); }
+}
+
+.hero__angka {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  margin: var(--sp-7) 0 0;
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--garis);
+  animation: naik var(--lama-muncul) var(--ease-keluar) 0.74s backwards;
+}
+
+.hero__angka dt {
+  color: var(--tinta-3);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.hero__angka dd {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  font-weight: 500;
+  color: var(--biru-tua);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mono cuma untuk angka sungguhan; "Unggul" bukan angka. */
+.hero__angka dd.angka--kata {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* --------------------------------------------------------------- medali -- */
+
+.medali {
+  margin: 0;
+}
+
+.medali__panggung {
+  position: relative;
+  aspect-ratio: 1;
+  width: 100%;
+}
+
+.medali__panggung canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.medali__panggung canvas.is-seret { cursor: grabbing; }
+
+.panggung__gagal {
+  position: absolute;
+  inset: auto 10% 12%;
+  margin: 0;
+  padding: var(--sp-4);
+  border: 1px solid var(--garis);
+  border-radius: var(--r-md);
+  background: var(--putih);
+  color: var(--tinta-2);
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------- foto dan bingkai -- */
+
+/*
+ * Satu perlakuan untuk semua foto: potong ke bingkai, satu lapis gradasi
+ * biru di atasnya, keterangan putih di kaki. Gradasinya bukan hiasan —
+ * foto siang dan foto malam dari sumber yang berbeda-beda jadi terbaca
+ * sebagai satu kelompok, dan teks putih di atasnya selalu cukup kontras.
+ */
+.bingkai,
+.sorot {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  border-radius: var(--r-lg);
+  background: var(--biru-pucat);
+}
+
+.bingkai img,
+.sorot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.94);
+  /* translate dan scale ditulis terpisah supaya geser paralaks mengikuti
+     gulir tanpa tertahan transisi, sementara perbesaran tetap halus. */
+  translate: 0 var(--geser, 0px);
+  scale: var(--zoom, 1);
+  transition: scale var(--lama-gambar) var(--ease), filter 0.5s var(--ease);
+}
+
+.bingkai::after,
+.sorot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    185deg,
+    rgba(0, 103, 174, 0.26) 0%,
+    rgba(1, 37, 63, 0.06) 40%,
+    rgba(1, 37, 63, 0.78) 100%
+  );
+  transition: opacity 0.5s var(--ease);
+}
+
+.bingkai:hover img,
+.sorot:hover img { --zoom: 1.05; filter: saturate(1); }
+
+.bingkai:hover::after,
+.sorot:hover::after { opacity: 0.82; }
+
+/* Foto berparalaks diperbesar sedikit lebih dulu, supaya tepinya tidak
+   pernah terlihat waktu gambarnya bergeser. */
+[data-parallax] img { --zoom: 1.09; }
+[data-parallax]:hover img { --zoom: 1.13; }
+
+.bingkai figcaption,
+.sorot figcaption {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: clamp(16px, 2.2vw, 28px);
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(1, 37, 63, 0.4);
+}
+
+.bingkai figcaption b,
+.sorot figcaption b {
+  display: block;
+  font-family: var(--font-judul);
+  font-weight: 500;
+  font-size: clamp(1.05rem, 1.8vw, 1.4rem);
+  letter-spacing: -0.01em;
+}
+
+.bingkai figcaption span,
+.sorot figcaption span {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.sorot { aspect-ratio: 4 / 3.1; }
+
+/* --------------------------------------------------------------- galeri -- */
+
+.galeri {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 20px);
+  max-width: 1340px;
+  margin-inline: auto;
+  padding: clamp(40px, 6vw, 80px) clamp(16px, 4vw, 48px);
+  border-top: 1px solid var(--garis);
+}
+
+.galeri__judul {
+  grid-column: 1 / -1;
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  margin-bottom: var(--sp-3);
+}
+
+/* Penempatan ditulis satu per satu, bukan diserahkan ke aliran otomatis:
+   foto potret di kiri menyandarkan dua baris di sebelahnya. */
+.galeri .bingkai { aspect-ratio: 16 / 10; }
+.galeri .bingkai:nth-of-type(1) { grid-column: 1; grid-row: 2 / span 2; aspect-ratio: auto; }
+.galeri .bingkai:nth-of-type(2) { grid-column: 2 / -1; grid-row: 2; aspect-ratio: 16 / 6.4; }
+.galeri .bingkai:nth-of-type(3) { grid-column: 2; grid-row: 3; }
+.galeri .bingkai:nth-of-type(5) { grid-column: 3; grid-row: 3; }
+.galeri .bingkai:nth-of-type(4) { grid-column: 1 / -1; grid-row: 4; aspect-ratio: 16 / 4.6; }
+
+/* --------------------------------------------------------------- bagian -- */
+
+.bagian {
+  max-width: 1340px;
+  margin-inline: auto;
+  padding: clamp(48px, 7vw, 96px) clamp(16px, 4vw, 48px);
+  border-top: 1px solid var(--garis);
+}
+
+.bagian > h2 {
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  max-width: 18ch;
+  margin-bottom: var(--sp-6);
+}
+
+.bagian__intro {
+  max-width: 54ch;
+  margin: calc(-1 * var(--sp-5)) 0 var(--sp-6);
+  color: var(--tinta-2);
+}
+
+.bagian--kembar {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+}
+
+.bagian__teks h2 {
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  max-width: 15ch;
+}
+
+.bagian__teks p {
+  max-width: 48ch;
+  color: var(--tinta-2);
+  margin: var(--sp-5) 0;
+}
+
+/* ----------------------------------------------------------- departemen -- */
+
+.dep {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 20px);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dep__kartu {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--sp-5) var(--sp-5) var(--sp-6);
+  border: 1px solid var(--garis);
+  border-radius: var(--r-lg);
+  background: linear-gradient(162deg, var(--putih) 0%, var(--biru-kabut) 100%);
+  transition: transform 0.4s var(--ease), border-color 0.4s var(--ease),
+    box-shadow 0.4s var(--ease);
+}
+
+/*
+ * Sorot yang mengikuti kursor. Warnanya diambil dari --rona milik tiap
+ * kartu, jadi keenam departemen punya nada birunya sendiri-sendiri tanpa
+ * satu pun hex baru ditulis di sini.
+ */
+.dep__kartu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 0%),
+    hsl(var(--rona, 205) 72% 55% / 0.26),
+    transparent 68%
+  );
+  transition: opacity 0.4s var(--ease);
+}
+
+.dep__kartu:hover,
+.dep__kartu:focus-within {
+  transform: translateY(-3px);
+  border-color: var(--garis-kuat);
+  box-shadow: var(--shadow-md);
+}
+
+.dep__kartu:hover::before,
+.dep__kartu:focus-within::before { opacity: 1; }
+
+/* Garis warna di kaki kartu, memanjang penuh waktu disentuh. */
+.dep__kartu::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, hsl(var(--rona, 205) 68% 46%), var(--biru-tua));
+  transform: scaleX(0.12);
+  transform-origin: left;
+  transition: transform 0.55s var(--ease-keluar);
+}
+
+.dep__kartu:hover::after,
+.dep__kartu:focus-within::after { transform: scaleX(1); }
+
+.dep__kode {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--tinta-3);
+}
+
+.dep__kartu h3 {
+  font-size: 1.3rem;
+  margin: var(--sp-2) 0 var(--sp-2);
+}
+
+.dep__kartu p {
+  margin: 0;
+  color: var(--tinta-2);
+  font-size: 14.5px;
+}
+
+/* Departemen tempat proyek ini dikerjakan, ditandai tanpa teks tambahan. */
+.dep__kartu--kami {
+  border-color: var(--garis-kuat);
+  background: linear-gradient(162deg, var(--putih) 0%, var(--biru-pucat) 100%);
+}
+
+.dep__kartu--kami::after { transform: scaleX(1); }
+
+/* ------------------------------------------------- panggung model massa -- */
+
+.panggung { margin: 0; }
+
+.panggung__kanvas {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  border-radius: var(--r-lg);
+  background: radial-gradient(
+    120% 90% at 50% 0%,
+    var(--putih) 0%,
+    var(--biru-kabut) 68%,
+    var(--biru-pucat) 100%
+  );
+  overflow: hidden;
+}
+
+.panggung__kanvas canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.panggung__kanvas canvas.is-seret { cursor: grabbing; }
+
+.panggung__kaki {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+}
+
+.panggung__nota {
+  color: var(--tinta-3);
+  font-size: 12.5px;
+}
+
+.ragam {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--garis);
+  border-radius: 999px;
+  background: var(--putih);
+}
+
+.ragam button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tinta-2);
+  cursor: pointer;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+.ragam button:hover { color: var(--biru); }
+
+.ragam button[aria-pressed='true'] {
+  background: var(--biru);
+  color: #fff;
+}
+
+.ragam button:disabled { opacity: 0.4; cursor: default; }
+
+/* --------------------------------------------------------------- ajakan -- */
+
+.ajakan {
+  margin: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 48px);
+  padding: clamp(48px, 8vw, 104px) clamp(24px, 5vw, 64px);
+  border-radius: clamp(14px, 2vw, 26px);
+  text-align: center;
+  color: #fff;
+  background:
+    radial-gradient(120% 140% at 18% 0%, var(--biru-terang) 0%, rgba(46, 144, 217, 0) 58%),
+    linear-gradient(145deg, var(--biru) 0%, var(--biru-tua) 62%, var(--biru-gelap) 100%);
+}
+
+.ajakan h2 {
+  font-size: clamp(1.8rem, 4.2vw, 3rem);
+  max-width: 16ch;
+  margin-inline: auto;
+}
+
+.ajakan p {
+  margin: var(--sp-4) auto var(--sp-6);
+  max-width: 44ch;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+/* ------------------------------------------------------------------ kaki -- */
+
+.kaki {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-5) clamp(24px, 5vw, 64px);
+  max-width: 1340px;
+  margin-inline: auto;
+  padding: clamp(40px, 6vw, 72px) clamp(16px, 4vw, 48px);
+}
+
+.kaki__merek {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.kaki__merek img { height: 52px; width: auto; }
+
+.kaki__kotak {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.kaki__teks {
+  margin: 0;
+  max-width: 54ch;
+  color: var(--tinta-2);
+  font-size: 14px;
+}
+
+.kaki__kredit {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--garis);
+  color: var(--tinta-3);
+  font-size: 12.5px;
+}
+
+.kaki__kredit code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* --------------------------------------------------------- penyingkapan -- */
+
+/* Hanya disembunyikan kalau JavaScript benar-benar jalan; lihat catatan
+   di kepala index.html. */
+.js [data-muncul] {
+  opacity: 0;
+  transform: translateY(var(--geser-muncul));
+  transition: opacity var(--lama-muncul) var(--ease) var(--tunda, 0ms),
+    transform var(--lama-muncul) var(--ease-keluar) var(--tunda, 0ms);
+}
+
+.js [data-muncul].is-muncul {
+  opacity: 1;
+  transform: none;
+}
+
+/* ------------------------------------------------------------- responsif -- */
+
+@media (max-width: 1040px) {
+  .hero,
+  .bagian--kembar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero__cahaya { right: -20%; top: 28%; width: 110%; }
+
+  .medali { max-width: 440px; margin-inline: auto; }
+
+  .dep { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .pita__nav { display: none; }
+
+  /* Galeri jadi satu lajur: penempatan baris/kolom di atas dilepas semua. */
+  .galeri { grid-template-columns: minmax(0, 1fr); }
+
+  .galeri .bingkai:nth-of-type(n) {
+    grid-column: 1;
+    grid-row: auto;
+    aspect-ratio: 16 / 10;
+  }
+
+  .galeri .bingkai:nth-of-type(1) { aspect-ratio: 4 / 5; }
+
+  .kaki { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 620px) {
+  .dep { grid-template-columns: minmax(0, 1fr); }
+
+  .hero__angka { gap: var(--sp-5); }
+
+  .panggung__kanvas { aspect-ratio: 4 / 3.4; }
+
+  .hero__aksi .tombol { flex: 1 1 auto; }
+}
+
+/* ----------------------------------------------- peranti tanpa penunjuk -- */
+
+/* Di layar sentuh tidak ada kursor yang bisa diikuti, jadi sorotnya
+   dinyalakan tetap dan lemah, bukan dimatikan. */
+@media (hover: none) {
+  .dep__kartu::before { opacity: 0.55; }
+  .dep__kartu::after { transform: scaleX(1); }
+}
+
+/* --------------------------------------------------------- hemat gerak -- */
+
+/*
+ * Gerakannya sengaja TIDAK dimatikan di sini.
+ *
+ * Banyak laptop Windows mengirim prefers-reduced-motion: reduce hanya
+ * karena "Show animations in Windows" dimatikan — sering tanpa disadari
+ * pemiliknya — dan halaman ini tetap harus hidup di sana. Jadi yang
+ * dikurangi cuma jarak dan lamanya: tidak ada lagi yang meluncur jauh,
+ * semuanya selesai cepat, dan tidak ada yang tertinggal tak terlihat.
+ *
+ * Paralaks adalah satu-satunya yang benar-benar dipadamkan, lewat
+ * js/beranda.js, karena gerakannya terikat gulir dan tidak punya "versi
+ * pendek".
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --lama-singkap: 0.5s;
+    --lama-muncul: 0.4s;
+    --geser-muncul: 3px;
+    --lama-gambar: 0.4s;
+  }
+
+  html { scroll-behavior: auto; }
+
+  .bingkai:hover img,
+  .sorot:hover img { --zoom: 1; }
+
+  .dep__kartu:hover { transform: none; }
+}

@@ -40,8 +40,40 @@
 
 const R_BUMI = 6371008.8;
 const LINGKAR = 2 * Math.PI * R_BUMI;
+const D = 1024000 / LINGKAR;
+const RAD = Math.PI / 180;
 
 /** Unit terproyeksi per meter pada satu lintang (derajat). */
 export function projectedUnitsPerMeter(latDeg) {
-  return 1024000 / (Math.cos((latDeg * Math.PI) / 180) * LINGKAR);
+  return 1024000 / (Math.cos(latDeg * RAD) * LINGKAR);
+}
+
+/**
+ * lon/lat/alt -> posisi di frame dunia plugin.
+ *
+ * Ini salinan lngLatToVector3() milik maplibre-three-plugin. Kita perlu
+ * sendiri supaya bisa MEMINDAHKAN splat secara live saat kalibrasi,
+ * karena plugin tidak menyediakan API untuk mengubah posisi setelah
+ * splat dimuat -- hanya muat ulang.
+ *
+ * Sudah diuji cocok dengan keluaran plugin sampai 2e-11 pada
+ * lon 112.795, lat -7.282: keduanya memberi
+ * [-320839.111111, 20769.234574, 0].
+ *
+ * Kalau suatu saat splat melompat jauh setelah plugin di-update,
+ * fungsi inilah yang pertama harus dicurigai.
+ */
+export function lngLatToWorld(lon, lat, alt = 0) {
+  return [
+    -R_BUMI * RAD * lon * D,
+    -R_BUMI * Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2)) * D,
+    alt * projectedUnitsPerMeter(lat),
+  ];
+}
+
+/** Perkiraan meter per derajat bujur dan lintang di satu lintang. */
+export function meterPerDerajat(latDeg) {
+  const lat = 111132.92 - 559.82 * Math.cos(2 * latDeg * RAD);
+  const lon = 111412.84 * Math.cos(latDeg * RAD);
+  return { lon, lat };
 }

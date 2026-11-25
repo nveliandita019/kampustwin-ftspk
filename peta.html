@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peta 3D — KampusTwin FTSPK</title>
+  <meta name="description" content="Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS.">
+
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="icon" href="Perlogoan/logo-its-biru-transparan.png">
+  <link rel="stylesheet" href="css/tema.css">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- maplibre-gl-splat hanya terbit sebagai ESM, jadi dimuat lewat CDN.
+
+       Dua entri terakhir memperbaiki masalah "dua instance three.js":
+       bundel plugin mengimpor three@0.186.1, tetapi dua dependensinya
+       (@sparkjsdev/spark dan @dvt3d/maplibre-three-plugin) sama-sama
+       mengimpor three@0.178.0. Tanpa pengalihan ini halaman memuat dua
+       three sekaligus, dan objek dari yang satu tidak dikenali yang lain.
+       Semuanya disatukan ke 0.178.0, versi yang dipin dependensi terdalam.
+
+       Versi plugin dipin tepat di 0.2.9. Alasannya ada di js/mercator.js:
+       arti opsi `scale` bergantung pada sebuah bug di versi itu. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "maplibre-gl-splat": "https://cdn.jsdelivr.net/npm/maplibre-gl-splat@0.2.9/+esm",
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm": "https://cdn.jsdelivr.net/npm/three@0.178.0/+esm",
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/addons/loaders/GLTFLoader.js/+esm": "https://cdn.jsdelivr.net/npm/three@0.178.0/addons/loaders/GLTFLoader.js/+esm"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <header class="app-header">
+    <a class="app-header__logos" href="index.html" title="Kembali ke halaman depan">
+      <img src="Perlogoan/logo-its-biru-transparan.png" alt="Logo ITS" width="30" height="30">
+      <img class="is-boxed" src="Perlogoan/logo-geomatika.jpg" alt="Logo Teknik Geomatika" width="28" height="28">
+    </a>
+    <div class="app-header__divider"></div>
+    <div class="app-header__title">
+      <strong>KampusTwin FTSPK</strong>
+      <span>Digital twin Fakultas Teknik Sipil, Perencanaan, dan Kebumian ITS</span>
+    </div>
+    <div class="app-header__spacer"></div>
+    <p class="status-dot" id="status" data-state="siap"><span>Siap</span></p>
+  </header>
+
+  <div id="map"></div>
+
+  <div class="loading" id="loading" hidden>
+    <div class="loading__spin"></div>
+    <div>
+      <div id="loading-text">Memuat splat</div>
+      <div class="loading__detail" id="loading-detail"></div>
+    </div>
+  </div>
+
+  <aside class="panel" id="panel">
+    <div class="panel__head">
+      <h2>Kontrol</h2>
+      <button class="icon-btn panel__collapse" id="panel-collapse" type="button"
+              aria-expanded="true" aria-controls="panel-body" title="Lipat panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 6l-6 6 6 6"/><path d="M19 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="panel__body" id="panel-body">
+
+      <!-- 1. Tampilan 3D -->
+      <section class="sect" data-open="true">
+        <button class="sect__head" type="button">
+          <h3>Tampilan 3D</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="seg" id="seg-mode" role="group" aria-label="Mode tampilan">
+            <button type="button" data-mode="splat" aria-pressed="true">Splat 3D</button>
+            <button type="button" data-mode="blok" aria-pressed="false">Blok 3D</button>
+            <button type="button" data-mode="2d" aria-pressed="false">2D</button>
+          </div>
+          <p class="note" id="mode-note">Gaussian splatting hasil pemotretan drone FTSPK.</p>
+
+          <div class="field">
+            <div class="field__top">
+              <label for="splat-opacity">Opasitas splat</label>
+              <output id="splat-opacity-out">100%</output>
+            </div>
+            <input type="range" id="splat-opacity" min="20" max="100" step="5" value="100">
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Layer -->
+      <section class="sect" data-open="true">
+        <button class="sect__head" type="button">
+          <h3>Layer</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content" id="layer-list">
+          <!-- diisi oleh js/panel.js dari daftar di js/config.js -->
+        </div>
+      </section>
+
+      <!-- 3. Basemap -->
+      <section class="sect" data-open="false">
+        <button class="sect__head" type="button">
+          <h3>Basemap</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="seg" id="seg-basemap" role="group" aria-label="Basemap">
+            <button type="button" data-basemap="terang" aria-pressed="true">Terang</button>
+            <button type="button" data-basemap="gelap" aria-pressed="false">Gelap</button>
+            <button type="button" data-basemap="satelit" aria-pressed="false">Satelit</button>
+            <button type="button" data-basemap="osm" aria-pressed="false">OSM</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Simulasi -->
+      <section class="sect" data-open="false">
+        <button class="sect__head" type="button">
+          <h3>Simulasi</h3>
+          <span class="badge">Segera</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="row">
+            <span class="swatch" style="background: var(--flood)"></span>
+            <span class="row__label"><span>Genangan banjir</span><small>butuh DEM DEMNAS</small></span>
+            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
+          </div>
+          <div class="row">
+            <span class="swatch" style="background: var(--fire)"></span>
+            <span class="row__label"><span>Zona kebakaran</span><small>butuh tabel skenario</small></span>
+            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
+          </div>
+          <div class="row">
+            <span class="swatch" style="background: var(--evac)"></span>
+            <span class="row__label"><span>Jalur evakuasi</span><small>butuh pgRouting</small></span>
+            <label class="switch"><input type="checkbox" disabled><span class="switch__track"></span></label>
+          </div>
+          <p class="note">Ketiga simulasi dirancang pada Tahap 3. Lihat <code>docs/</code>.</p>
+        </div>
+      </section>
+
+      <!-- 5. Info -->
+      <section class="sect" data-open="false">
+        <button class="sect__head" type="button">
+          <h3>Info</h3>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sect__content">
+          <div class="legend">
+            <div class="legend__item"><span class="swatch" style="background: var(--accent)"></span>Bounding box gedung</div>
+            <div class="legend__item"><span class="swatch" style="background: var(--flood)"></span>Sungai dan genangan</div>
+            <div class="legend__item"><span class="swatch" style="background: var(--evac)"></span>Jalur evakuasi</div>
+          </div>
+          <p class="note">
+            Data: GeoServer <code>ftspk</code> + PostGIS <code>ftspk_twin</code>.
+            Splat: <span id="info-splat">belum dimuat</span>.
+          </p>
+          <p class="note">
+            Splat selalu digambar pada kualitas penuh, di posisi hasil
+            kalibrasi 25 November 2026.
+          </p>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

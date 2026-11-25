@@ -6,12 +6,12 @@
  * kalau CDN splat tidak bisa diakses, peta dan layer tetap jalan.
  */
 
-import { GEOREF, KUALITAS_AWAL, PUSAT, ZOOM_AWAL, PITCH_AWAL, BEARING_AWAL } from './config.js';
-import { buatPeta, gantiBasemap } from './map.js';
+import { PUSAT, ZOOM_AWAL, PITCH_AWAL, BEARING_AWAL } from './config.js';
+import { buatPeta, gantiBasemap, gambarSeperlunya } from './map.js';
 import { Layers } from './layers.js';
 import { Buildings } from './buildings.js';
 import { Splat } from './splat.js';
-import { initPanel, labelKualitas } from './panel.js';
+import { initPanel } from './panel.js';
 
 const CATATAN_MODE = {
   splat: 'Gaussian splatting hasil pemotretan drone FTSPK.',
@@ -20,12 +20,16 @@ const CATATAN_MODE = {
 };
 
 const map = buatPeta('map');
+
+/* Dipasang sebelum apa pun yang menggambar, supaya tidak ada gelung
+   gambar yang sempat terpasang di luar kendalinya. */
+const bangunkanGambar = gambarSeperlunya(map);
+
 const layers = new Layers(map);
 const buildings = new Buildings(map);
 const splat = new Splat(map);
 
 let mode = 'splat';
-let kualitas = KUALITAS_AWAL;
 
 // Dideklarasikan terpisah dari penugasan: handler panel bisa terpanggil
 // saat initPanel masih berjalan, dan `const` akan melempar TDZ di situ,
@@ -33,7 +37,6 @@ let kualitas = KUALITAS_AWAL;
 let ui;
 ui = initPanel({
   onMode: (v) => setMode(v),
-  onKualitas: (v) => setKualitas(v),
   onBasemap: (v) => gantiBasemap(map, v),
   onLayer: async (id, aktif) => {
     if (aktif) ui.setStatusLayer(id, 'memuat', 'memuat...');
@@ -45,19 +48,12 @@ ui = initPanel({
     );
   },
   onOpacity: (v) => {
+    /* Opasitas tidak memancarkan event peta apa pun, jadi kalau peta
+       sedang diam tidak ada yang membangunkannya. */
+    bangunkanGambar();
     if (!splat.setOpacity(v)) {
       ui.matikanOpasitas('Plugin splat v0.2.9 tidak menyediakan pengatur opasitas.');
     }
-  },
-  onDevApply: async (nilai) => {
-    // Panel kalibrasi: coba transform lain tanpa menyentuh config.js.
-    await splat.muat(kualitas, {
-      longitude: nilai.lon,
-      latitude: nilai.lat,
-      altitude: nilai.alt,
-      rotation: nilai.rotation,
-      scale: nilai.scale,
-    });
   },
 });
 
@@ -65,6 +61,8 @@ ui = initPanel({
 
 function setMode(v) {
   mode = v;
+  /* Ganti mode membuang atau memasang mesh, tanpa event peta. */
+  bangunkanGambar(3000);
   ui?.setCatatanMode(CATATAN_MODE[v] || '');
   buildings.setMode(v);
   splat.setTampil(v === 'splat');
@@ -74,23 +72,22 @@ function setMode(v) {
   else if (map.getPitch() < 10) map.easeTo({ pitch: PITCH_AWAL, duration: 400 });
 }
 
-async function setKualitas(v) {
-  kualitas = v;
-  if (mode !== 'splat') return;
-  await splat.muat(v);
-}
-
 /* ---------------------------------------------------------------- boot -- */
 
 splat.on('mulai', ({ def }) => {
-  ui.setLoading(true, 'Memuat splat', `${def.label} · ${def.ukuran}`);
+  ui.setLoading(true, 'Memuat splat', `Kualitas penuh · ${def.ukuran}`);
   ui.setStatus('Memuat', 'memuat');
 });
 
-splat.on('selesai', ({ kualitas: k, detik }) => {
+splat.on('selesai', ({ def, detik }) => {
+  /* Mesh baru masuk adegan tanpa event peta, dan spark masih menyusun
+     urutan gaussian beberapa bingkai sesudahnya. */
+  bangunkanGambar(4000);
   ui.setLoading(false);
   ui.setStatus('Siap', 'siap');
-  ui.setInfoSplat(`${labelKualitas(k)}, ${detik.toFixed(1)} s`);
+  ui.setInfoSplat(
+    `${def.jumlah.toLocaleString('id-ID')} splat, ${def.ukuran}, ${detik.toFixed(1)} s`
+  );
 });
 
 splat.on('galat', (pesan) => {
@@ -100,12 +97,6 @@ splat.on('galat', (pesan) => {
 });
 
 map.on('load', async () => {
-  ui.setInfoGeoref(
-    GEOREF.dibake
-      ? `Georeferensi: ter-bake, RMSE ${GEOREF.rmse_m ?? '?'} m (validasi ${GEOREF.rmse_validasi_m ?? '?'} m).`
-      : 'Georeferensi: belum dikalibrasi. Posisi splat masih sementara, lihat tools/README.md.'
-  );
-
   // Gedung lebih dulu, supaya layers.js tahu harus menyisipkan di bawahnya.
   const adaGedung = await buildings.siapkan();
   if (!adaGedung) {
@@ -120,9 +111,7 @@ map.on('load', async () => {
     }
   }
 
-  if (await splat.siapkan()) {
-    await splat.muat(kualitas);
-  }
+  if (await splat.siapkan()) await splat.muat();
 });
 
 /* Tombol pulang ke tampilan awal, lewat dobel klik pada logo. */
